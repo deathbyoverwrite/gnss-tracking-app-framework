@@ -3,7 +3,7 @@
 ## Description
 
 This project presents a framework for developing a GNSS tracking app for the ASHCI course at
-Heilbronn University of Applied Sciences (HHN). Designed for Android 10+ and leveraging
+Heilbronn University of Applied Sciences (HHN). Designed for Android 11+ and leveraging
 OpenStreetMap tools for Android, the app offers an intuitive interface for tracking GNSS data and
 visualizing locations on a map in real-time. It also provides real-time location notifications and
 detailed statistical insights.
