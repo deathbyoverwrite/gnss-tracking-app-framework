@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">GNSSTrackingApp</string>
+    <string name="map">Map</string>
+    <string name="statistics">Statistics</string>
+    <string name="settings">Settings</string>
+    <string name="time">Time: %1$s</string>
+    <string name="longitude">Longitude: %1$s</string>
+    <string name="latitude">Latitude: %1$s</string>
+    <string name="fix_type">Fix Type: %1$s</string>
+    <string name="horizontal_accuracy">Horizontal Accuracy: %1$s</string>
+    <string name="vertical_accuracy">Vertical Accuracy: %1$s</string>
+    <string name="elevation">Elevation: %1$s</string>
+    <string name="rtcm_enabled">RTCM Enabled: %1$s</string>
+    <string name="connected_to_websocket">Connected to WebSocket</string>
+    <string name="disconnected_from_websocket">Disconnected from WebSocket</string>
+</resources>
