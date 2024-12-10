@@ -1,10 +1,14 @@
 package de.hhn.gnsstrackingapp.ui.screens.map
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -14,7 +18,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import de.hhn.gnsstrackingapp.R
 import de.hhn.gnsstrackingapp.data.PointOfInterest
-import de.hhn.gnsstrackingapp.data.poiList
+import de.hhn.gnsstrackingapp.data.getPoiList
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -28,6 +32,8 @@ import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
 import kotlin.collections.forEach
 
 
+
+
 @Composable
 fun OsmMapView(
     modifier: Modifier = Modifier,
@@ -37,6 +43,7 @@ fun OsmMapView(
     onCircleClick: () -> Unit = {}
 ) {
     val locationData by locationViewModel.locationData.collectAsState()
+
 
     DisposableEffect(mapView) {
         initializeMapView(mapView, mapViewModel)
@@ -64,6 +71,7 @@ fun OsmMapView(
 
     }
 
+    var selectedPOI = remember { mutableStateOf<PointOfInterest?>(null) }
     AndroidView(factory = { mapView },
         modifier = modifier.fillMaxSize(),
         update = { mapViewUpdate ->
@@ -75,11 +83,29 @@ fun OsmMapView(
                 updateMapViewState(mapView, mapViewModel, locationData, onCircleClick)
 
                 // TODO: put pois here
-                overlayPOIsOnMap(mapView = this, poiList = poiList)
+                // Overlay POIs on the map
+                overlayPOIsOnMap(
+                    mapView = this,
+                    poiList = getPoiList(context = this.context),
+                    onMarkerClick = { poi ->
+                        // Set the clicked POI to show in the dialog
+                        selectedPOI.value = poi
 
+                        println("POI Clicked: ${poi.name}")
+                    }
+                )
+
+                // Refresh the map view
                 invalidate()
             }
         })
+    // Show the POI dialog when a marker is clicked
+
+    selectedPOI.value?.let { poi ->
+        POIDialog(poi = poi) {
+            selectedPOI.value = null // Close the dialog
+        }
+    }
 }
 
 @Composable
@@ -167,13 +193,33 @@ private fun updateMapViewState(
 }
 
 // TODO: Function to overlay POIs on the map
-fun overlayPOIsOnMap(mapView: MapView, poiList: List<PointOfInterest>) {
+fun overlayPOIsOnMap(mapView: MapView, poiList: List<PointOfInterest>, onMarkerClick: (PointOfInterest) -> Unit
+) {
     poiList.forEach { poi ->
-        val marker = Marker(mapView)
-        marker.position = GeoPoint(poi.latitude, poi.longitude)
-        marker.title = poi.name
-        marker.subDescription = poi.description ?: ""
-        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        val marker = Marker(mapView).apply {
+            position = GeoPoint(poi.latitude, poi.longitude)
+            title = poi.name
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+
+            // Add a click listener to trigger the callback
+            setOnMarkerClickListener { _, _ ->
+                onMarkerClick(poi)
+                true
+            }
+        }
         mapView.overlays.add(marker)
     }
+}
+@Composable
+fun POIDialog(poi: PointOfInterest, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text(text = poi.name) },
+        text = { Text(text = poi.description ?: "No description available") },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }

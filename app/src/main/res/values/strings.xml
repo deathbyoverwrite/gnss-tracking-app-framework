@@ -13,4 +13,6 @@
     <string name="rtcm_enabled">RTCM Enabled: %1$s</string>
     <string name="connected_to_websocket">Connected to WebSocket</string>
     <string name="disconnected_from_websocket">Disconnected from WebSocket</string>
+    <string name="lorem_ipsum_text">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren</string>
+
 </resources>

@@ -1,5 +1,6 @@
 package de.hhn.gnsstrackingapp.data
-
+import android.content.Context
+import de.hhn.gnsstrackingapp.R
 // Data class for a Point of Interest (POI)
 data class PointOfInterest(
     val name: String,
@@ -8,15 +9,11 @@ data class PointOfInterest(
     val description: String? = null
 )
 
-// Hardcoded list of POIs
-val poiList = listOf(
-    PointOfInterest("UnityLab", 49.12304962966598, 9.211823058675835, "Heart of the city."),
-    PointOfInterest("Gebäude B", 49.122967116240524, 9.211527839869861, "Historical exhibits."),
-    PointOfInterest("Beach Feld", 49.122712955451156, 9.212428275012405, "Ganz cool hier."),
-    PointOfInterest("Mensa", 49.122260308035955, 9.210286118729146, "Essen gibts hier."),
 
-
-
-
-
-    )
+fun getPoiList(context: Context): List<PointOfInterest> {
+    return listOf(
+    PointOfInterest("UnityLab", 49.12304962966598, 9.211823058675835, "Heart of the city. \n\n"  + context.getString(R.string.lorem_ipsum_text)),
+    PointOfInterest("Gebäude B", 49.122967116240524, 9.211527839869861, "Historical exhibits.\n\n"  + context.getString(R.string.lorem_ipsum_text)),
+    PointOfInterest("Beach Feld", 49.122712955451156, 9.212428275012405, "Ganz cool hier.\n\n"  + context.getString(R.string.lorem_ipsum_text)),
+    PointOfInterest("Mensa", 49.122260308035955, 9.210286118729146, "Essen gibts hier.\n\n"  + context.getString(R.string.lorem_ipsum_text))
+    )}

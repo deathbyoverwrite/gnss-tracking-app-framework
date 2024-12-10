@@ -33,7 +33,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import de.hhn.gnsstrackingapp.data.PointOfInterest
-import de.hhn.gnsstrackingapp.data.poiList
 import org.osmdroid.views.MapView
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
