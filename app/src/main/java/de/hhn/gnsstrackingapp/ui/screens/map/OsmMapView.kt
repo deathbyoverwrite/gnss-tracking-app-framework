@@ -13,14 +13,19 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import de.hhn.gnsstrackingapp.R
+import de.hhn.gnsstrackingapp.data.PointOfInterest
+import de.hhn.gnsstrackingapp.data.poiList
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.ScaleBarOverlay
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
+import kotlin.collections.forEach
 
 
 @Composable
@@ -68,6 +73,9 @@ fun OsmMapView(
                 }
 
                 updateMapViewState(mapView, mapViewModel, locationData, onCircleClick)
+
+                // TODO: put pois here
+                overlayPOIsOnMap(mapView = this, poiList = poiList)
 
                 invalidate()
             }
@@ -155,5 +163,17 @@ private fun updateMapViewState(
         mapView.controller.animateTo(mapViewModel.centerLocation, mapViewModel.zoomLevel, 500)
 
         mapViewModel.isAnimating.value = false
+    }
+}
+
+// TODO: Function to overlay POIs on the map
+fun overlayPOIsOnMap(mapView: MapView, poiList: List<PointOfInterest>) {
+    poiList.forEach { poi ->
+        val marker = Marker(mapView)
+        marker.position = GeoPoint(poi.latitude, poi.longitude)
+        marker.title = poi.name
+        marker.subDescription = poi.description ?: ""
+        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        mapView.overlays.add(marker)
     }
 }
