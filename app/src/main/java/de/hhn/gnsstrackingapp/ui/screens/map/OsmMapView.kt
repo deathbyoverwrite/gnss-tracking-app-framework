@@ -56,6 +56,7 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.ScaleBarOverlay
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
 import kotlin.collections.forEach
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 
 
@@ -310,16 +311,15 @@ fun NavigationOverlay(
     onClose: () -> Unit
 ) {
     val currentLocation by locationViewModel.locationData.collectAsState()
-    val directionToPoi by navigationViewModel.directionToPoi.observeAsState(initial = 0f)
-    val deviceAzimuth by navigationViewModel.deviceAzimuth.observeAsState(initial = 0f)
     val finalDirection by navigationViewModel.finalDirection.observeAsState(initial = 0f)
 
+    val systemUiController = rememberSystemUiController()
 
-    //val direction by navigationViewModel.directionToPoi.observeAsState(initial = 0f)
-
-    // Calculate direction dynamically using remember and recomposition
-    val direction = remember { mutableStateOf(0f) }
-
+    // Hide system UI (status bar, navigation bar)
+    LaunchedEffect(Unit) {
+        systemUiController.isSystemBarsVisible = false
+        systemUiController.setSystemBarsColor(Color.Transparent)
+    }
     // Recalculate direction whenever the current location or POI changes
     LaunchedEffect(currentLocation, poiLocation) {
         currentLocation.location.let { userLocation ->
