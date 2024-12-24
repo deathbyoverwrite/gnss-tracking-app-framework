@@ -66,7 +66,9 @@ fun OsmMapView(
 ) {
     val locationData by locationViewModel.locationData.collectAsState()
 
-    val showNavigationOverlay = remember { mutableStateOf(true) }
+    val showNavigationOverlay = remember { mutableStateOf(false) }
+    val navigationTarget = remember { mutableStateOf<Location?>(null) }
+
 
     DisposableEffect(mapView) {
         initializeMapView(mapView, mapViewModel)
@@ -130,25 +132,24 @@ fun OsmMapView(
     selectedPOI.value?.let { poi ->
         POIDialog(
             poi = poi,
-            navigationViewModel = navigationViewModel,
-            locationViewModel = locationViewModel,
-            onNavigate = { showNavigationOverlay.value = true }, // Trigger overlay
+            onNavigate = { poiLocation ->
+                navigationTarget.value = poiLocation // Set navigation target
+                showNavigationOverlay.value = true  // Trigger navigation overlay
+            },
             onDismiss = { selectedPOI.value = null }
         )
 
-
+    }
     // Show navigation overlay if triggered
     if (showNavigationOverlay.value) {
         NavigationOverlay(
             locationViewModel = locationViewModel,
             navigationViewModel = navigationViewModel,
-            poiLocation = Location("osmdroid").apply {
-                latitude = poi.latitude
-                longitude = poi.longitude
-            }, // Inline conversion of GeoPoint to Location
-            onClose = { showNavigationOverlay.value = false }
+            poiLocation = navigationTarget.value ?: return, // Ensure non-null target
+            onClose = { showNavigationOverlay.value = false } // Close overlay
+
         )
-    }
+
     }
 }
 
@@ -338,7 +339,7 @@ fun NavigationOverlay(
 
 
 @Composable
-fun POIDialog(
+fun POIDialogOLD(
     poi: PointOfInterest,
     navigationViewModel: NavigationViewModel,
     locationViewModel: LocationViewModel,
@@ -379,5 +380,44 @@ fun POIDialog(
         }
     )
 }
+
+@Composable
+fun POIDialog(
+    poi: PointOfInterest,
+    onNavigate: (Location) -> Unit, // Callback to trigger navigation
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text(text = poi.name) },
+        text = { Text(text = poi.description ?: "No description available") },
+        confirmButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween // Align buttons to opposite sides
+            ) {
+                TextButton(
+                    onClick = onDismiss
+                ) {
+                    Text("Close")
+                }
+                TextButton(
+                    onClick = {
+                        // Create a Location object for the selected POI
+                        val poiLocation = Location("osmdroid").apply {
+                            latitude = poi.latitude
+                            longitude = poi.longitude
+                        }
+                        onNavigate(poiLocation) // Pass the location to the callback
+                        onDismiss() // Dismiss the dialog
+                    }
+                ){
+                    Text("Navigate")
+                }
+            }
+        }
+    )
+}
+
 
 
