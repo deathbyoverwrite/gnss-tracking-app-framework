@@ -1,5 +1,6 @@
 package de.hhn.gnsstrackingapp.di
 
+import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.LocationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.MapViewModel
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsViewModel
@@ -12,4 +13,5 @@ val viewModelModule = module {
     viewModel { LocationViewModel() }
     viewModel { SettingsViewModel() }
     viewModel { StatisticsViewModel() }
+    viewModel { NavigationViewModel() }
 }

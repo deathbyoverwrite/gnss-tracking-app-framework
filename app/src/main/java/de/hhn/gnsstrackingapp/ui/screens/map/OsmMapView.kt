@@ -1,26 +1,36 @@
 package de.hhn.gnsstrackingapp.ui.screens.map
 
 import android.content.Intent
+import android.location.Location
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -28,6 +38,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import de.hhn.gnsstrackingapp.R
 import de.hhn.gnsstrackingapp.data.PointOfInterest
 import de.hhn.gnsstrackingapp.data.getPoiList
+import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -49,10 +60,13 @@ fun OsmMapView(
     mapView: MapView,
     mapViewModel: MapViewModel,
     locationViewModel: LocationViewModel,
-    onCircleClick: () -> Unit = {}
+    onCircleClick: () -> Unit = {},
+    navigationViewModel: NavigationViewModel,
+
 ) {
     val locationData by locationViewModel.locationData.collectAsState()
 
+    val showNavigationOverlay = remember { mutableStateOf(true) }
 
     DisposableEffect(mapView) {
         initializeMapView(mapView, mapViewModel)
@@ -112,10 +126,29 @@ fun OsmMapView(
         })
     // Show the POI dialog when a marker is clicked
 
+    // Show POI Dialog when a marker is clicked
     selectedPOI.value?.let { poi ->
-        POIDialog(poi = poi) {
-            selectedPOI.value = null // Close the dialog
-        }
+        POIDialog(
+            poi = poi,
+            navigationViewModel = navigationViewModel,
+            locationViewModel = locationViewModel,
+            onNavigate = { showNavigationOverlay.value = true }, // Trigger overlay
+            onDismiss = { selectedPOI.value = null }
+        )
+
+
+    // Show navigation overlay if triggered
+    if (showNavigationOverlay.value) {
+        NavigationOverlay(
+            locationViewModel = locationViewModel,
+            navigationViewModel = navigationViewModel,
+            poiLocation = Location("osmdroid").apply {
+                latitude = poi.latitude
+                longitude = poi.longitude
+            }, // Inline conversion of GeoPoint to Location
+            onClose = { showNavigationOverlay.value = false }
+        )
+    }
     }
 }
 
@@ -223,7 +256,7 @@ fun overlayPOIsOnMap(mapView: MapView, poiList: List<PointOfInterest>, onMarkerC
 }
 // TODO: Function for POI Dialog
 @Composable
-fun POIDialog(poi: PointOfInterest, onDismiss: () -> Unit) {
+fun POIDialogGOOGLE(poi: PointOfInterest, onDismiss: () -> Unit) {
     val context = LocalContext.current // Retrieve context within the Composable
 
     AlertDialog(
@@ -260,3 +293,91 @@ fun POIDialog(poi: PointOfInterest, onDismiss: () -> Unit) {
         }
     )
 }
+
+//TODO: maybe delete here
+@Composable
+fun NavigationOverlay(
+    locationViewModel: LocationViewModel,
+    navigationViewModel: NavigationViewModel,
+    poiLocation: Location,
+    onClose: () -> Unit
+) {
+    val currentLocation by locationViewModel.locationData.collectAsState()
+    val direction by navigationViewModel.directionToPoi.observeAsState(initial = 0f)
+
+    LaunchedEffect(currentLocation) {
+        currentLocation.let {
+            navigationViewModel.updateDirectionToPoi(it.location, poiLocation)
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+    ) {
+        // Directional Arrow
+        androidx.compose.foundation.Image(
+            painter = painterResource(id = R.drawable.ic_arrow),
+            contentDescription = "Direction Arrow",
+            modifier = Modifier
+                .size(100.dp)
+                .align(Alignment.Center)
+                .rotate(direction)
+        )
+
+        // Close Button
+        Button(
+            onClick = onClose,
+            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+        ) {
+            Text("Close")
+        }
+    }
+}
+
+
+
+@Composable
+fun POIDialog(
+    poi: PointOfInterest,
+    navigationViewModel: NavigationViewModel,
+    locationViewModel: LocationViewModel,
+    onNavigate: () -> Unit, // Callback to start in-map navigation
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text(text = poi.name) },
+        text = { Text(text = poi.description ?: "No description available") },
+        confirmButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(
+                    onClick = onDismiss
+                ) {
+                    Text("Close")
+                }
+                TextButton(
+                    onClick = {
+                        // Trigger in-app navigation
+                        navigationViewModel.updateDirectionToPoi(
+                            currentLocation = locationViewModel.locationData.value.location,
+                            poiLocation = Location("osmdroid").apply {
+                                latitude = poi.latitude
+                                longitude = poi.longitude
+                            }
+                        )
+                        onNavigate() // Show navigation overlay
+                        onDismiss() // Close the dialog
+                    }
+                ) {
+                    Text("Navigate")
+                }
+            }
+        }
+    )
+}
+
+

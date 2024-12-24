@@ -19,6 +19,7 @@ import de.hhn.gnsstrackingapp.services.LocationService
 import de.hhn.gnsstrackingapp.services.ServiceManager
 import de.hhn.gnsstrackingapp.ui.navigation.MainNavigation
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationBarComponent
+import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.LocationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.MapViewModel
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsViewModel
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
     private val locationViewModel: LocationViewModel by viewModel()
     private val settingsViewModel: SettingsViewModel by viewModel()
     private val statisticsViewModel: StatisticsViewModel by viewModel()
+    private val navigationViewModel: NavigationViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,7 +95,8 @@ class MainActivity : ComponentActivity() {
                                 locationViewModel,
                                 statisticsViewModel,
                                 settingsViewModel,
-                                webServicesProvider
+                                webServicesProvider,
+                                navigationViewModel
                             )
                         }
                     })

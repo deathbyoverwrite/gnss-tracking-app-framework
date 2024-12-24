@@ -33,6 +33,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import de.hhn.gnsstrackingapp.data.PointOfInterest
+import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
 import org.osmdroid.views.MapView
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
@@ -41,6 +42,7 @@ import org.osmdroid.views.overlay.Marker
 fun MapScreen(
     mapViewModel: MapViewModel,
     locationViewModel: LocationViewModel,
+    navigationViewModel: NavigationViewModel
 ) {
     val mapView = rememberMapViewWithLifecycle()
     val locationData by locationViewModel.locationData.collectAsState()
@@ -50,6 +52,7 @@ fun MapScreen(
             mapView = mapView,
             mapViewModel = mapViewModel,
             locationViewModel = locationViewModel,
+            navigationViewModel = navigationViewModel
         )
 
         //overlayPOIsOnMap(mapView = mapView, poiList = poiList)

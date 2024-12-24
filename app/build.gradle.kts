@@ -72,6 +72,8 @@ dependencies {
     implementation(libs.osmdroid.mapsforge)
 
 
+    implementation(libs.compose.runtime.livedata)
+
 
     // Google Play Services Location
     implementation(libs.play.services.location)

@@ -21,10 +21,11 @@ fun MainNavigation(
     locationViewModel: LocationViewModel,
     statisticsViewModel: StatisticsViewModel,
     settingsViewModel: SettingsViewModel,
-    webServicesProvider: WebServicesProvider
+    webServicesProvider: WebServicesProvider,
+    navigationViewModel: NavigationViewModel
 ) {
     NavHost(navController = navHostController, startDestination = Screen.MapScreen.route) {
-        composable(Screen.MapScreen.route) { MapScreen(mapViewModel, locationViewModel) }
+        composable(Screen.MapScreen.route) { MapScreen(mapViewModel, locationViewModel, navigationViewModel) }
         composable(Screen.StatisticsScreen.route) {
             StatisticsScreen(
                 statisticsViewModel, webServicesProvider
