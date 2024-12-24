@@ -1,8 +1,14 @@
 package de.hhn.gnsstrackingapp.ui.screens.map
 
+import android.content.Context
 import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.location.Location
 import android.net.Uri
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -304,13 +310,29 @@ fun NavigationOverlay(
     onClose: () -> Unit
 ) {
     val currentLocation by locationViewModel.locationData.collectAsState()
-    val direction by navigationViewModel.directionToPoi.observeAsState(initial = 0f)
+    val directionToPoi by navigationViewModel.directionToPoi.observeAsState(initial = 0f)
+    val deviceAzimuth by navigationViewModel.deviceAzimuth.observeAsState(initial = 0f)
+    val finalDirection by navigationViewModel.finalDirection.observeAsState(initial = 0f)
 
-    LaunchedEffect(currentLocation) {
-        currentLocation.let {
-            navigationViewModel.updateDirectionToPoi(it.location, poiLocation)
+
+    //val direction by navigationViewModel.directionToPoi.observeAsState(initial = 0f)
+
+    // Calculate direction dynamically using remember and recomposition
+    val direction = remember { mutableStateOf(0f) }
+
+    // Recalculate direction whenever the current location or POI changes
+    LaunchedEffect(currentLocation, poiLocation) {
+        currentLocation.location.let { userLocation ->
+            val userGeoPoint = GeoPoint(userLocation.latitude, userLocation.longitude)
+
+            // Update the direction to the POI in the NavigationViewModel
+            navigationViewModel.updateDirectionToPoi(userGeoPoint, GeoPoint(poiLocation.latitude, poiLocation.longitude))
         }
     }
+
+
+    val animatedDirection by animateFloatAsState(targetValue = finalDirection)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -323,7 +345,7 @@ fun NavigationOverlay(
             modifier = Modifier
                 .size(100.dp)
                 .align(Alignment.Center)
-                .rotate(direction)
+                .rotate(animatedDirection)
         )
 
         // Close Button
@@ -365,10 +387,9 @@ fun POIDialogOLD(
                         // Trigger in-app navigation
                         navigationViewModel.updateDirectionToPoi(
                             currentLocation = locationViewModel.locationData.value.location,
-                            poiLocation = Location("osmdroid").apply {
-                                latitude = poi.latitude
-                                longitude = poi.longitude
-                            }
+                            poiLocation = GeoPoint( poi.latitude ,poi.longitude)
+
+
                         )
                         onNavigate() // Show navigation overlay
                         onDismiss() // Close the dialog
@@ -419,5 +440,53 @@ fun POIDialog(
     )
 }
 
+
+class AzimuthCalculator(context: Context, private val navigationViewModel: NavigationViewModel) : SensorEventListener {
+    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val gravity = FloatArray(3)
+    private val geomagnetic = FloatArray(3)
+    private val rotationMatrix = FloatArray(9)
+    private val orientation = FloatArray(3)
+
+    private val accelerometerSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    private val magneticFieldSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+
+    init {
+        sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI)
+        sensorManager.registerListener(this, magneticFieldSensor, SensorManager.SENSOR_DELAY_UI)
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event == null) return
+
+        // Reading accelerometer and magnetic field data
+        if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+            System.arraycopy(event.values, 0, gravity, 0, event.values.size)
+        }
+
+        if (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) {
+            System.arraycopy(event.values, 0, geomagnetic, 0, event.values.size)
+        }
+
+        // Calculate azimuth if we have both accelerometer and magnetic field data
+        if (gravity != null && geomagnetic != null) {
+            val success = SensorManager.getRotationMatrix(rotationMatrix, null, gravity, geomagnetic)
+            if (success) {
+                SensorManager.getOrientation(rotationMatrix, orientation)
+                val azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
+                navigationViewModel.updateDeviceAzimuth(azimuth)
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        // Handle sensor accuracy changes if needed
+    }
+
+    // Unregister sensors when not needed (e.g., in onDestroy)
+    fun unregister() {
+        sensorManager.unregisterListener(this)
+    }
+}
 
 

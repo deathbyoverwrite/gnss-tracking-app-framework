@@ -20,6 +20,7 @@ import de.hhn.gnsstrackingapp.services.ServiceManager
 import de.hhn.gnsstrackingapp.ui.navigation.MainNavigation
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationBarComponent
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
+import de.hhn.gnsstrackingapp.ui.screens.map.AzimuthCalculator
 import de.hhn.gnsstrackingapp.ui.screens.map.LocationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.MapViewModel
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsViewModel
@@ -33,15 +34,19 @@ import org.osmdroid.util.GeoPoint
 
 class MainActivity : ComponentActivity() {
     private lateinit var serviceManager: ServiceManager
-    private lateinit var webServicesProvider: WebServicesProvider
+    //private lateinit var webServicesProvider: WebServicesProvider
 
     private val mapViewModel: MapViewModel by viewModel()
     private val locationViewModel: LocationViewModel by viewModel()
     private val settingsViewModel: SettingsViewModel by viewModel()
     private val statisticsViewModel: StatisticsViewModel by viewModel()
     private val navigationViewModel: NavigationViewModel by viewModel()
+    private lateinit var azimuthCalculator: AzimuthCalculator
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        azimuthCalculator = AzimuthCalculator(this, navigationViewModel)
+
         super.onCreate(savedInstanceState)
 
         serviceManager = ServiceManager(this)
@@ -66,17 +71,17 @@ class MainActivity : ComponentActivity() {
             locationViewModel.updateLocation(GeoPoint(latitude, longitude), locationName, accuracy)
         }
 
-        val webServicesProvider = WebServicesProvider("ws://${webSocketIp.value}:80")
-        lifecycleScope.launch {
-            webServicesProvider.startSocket()
-        }
-        lifecycleScope.launch {
-            for (socketUpdate in webServicesProvider.socketEventChannel) {
-                socketUpdate.text?.let { jsonData ->
-                    statisticsViewModel.updateGnssOutput(parseGnssJson(jsonData))
-                }
-            }
-        }
+        //val webServicesProvider = WebServicesProvider("ws://${webSocketIp.value}:80")
+        //lifecycleScope.launch {
+         //   webServicesProvider.startSocket()
+        //}
+        //lifecycleScope.launch {
+         //   for (socketUpdate in webServicesProvider.socketEventChannel) {
+        //        socketUpdate.text?.let { jsonData ->
+          //          statisticsViewModel.updateGnssOutput(parseGnssJson(jsonData))
+            //    }
+         //   }
+        ///}
 
         setContent {
             GNSSTrackingAppTheme {
@@ -95,7 +100,7 @@ class MainActivity : ComponentActivity() {
                                 locationViewModel,
                                 statisticsViewModel,
                                 settingsViewModel,
-                                webServicesProvider,
+                                //webServicesProvider,
                                 navigationViewModel
                             )
                         }
@@ -109,6 +114,6 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
 
         serviceManager.stopLocationService()
-        webServicesProvider.stopSocket()
+        //webServicesProvider.stopSocket()
     }
 }
