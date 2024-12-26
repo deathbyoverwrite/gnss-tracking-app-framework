@@ -18,6 +18,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -32,17 +33,14 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
-import de.hhn.gnsstrackingapp.data.PointOfInterest
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
-import org.osmdroid.views.MapView
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.overlay.Marker
 
 @Composable
 fun MapScreen(
     mapViewModel: MapViewModel,
     locationViewModel: LocationViewModel,
-    navigationViewModel: NavigationViewModel
+    navigationViewModel: NavigationViewModel,
+    isFullscreen: MutableState<Boolean>
 ) {
     val mapView = rememberMapViewWithLifecycle()
     val locationData by locationViewModel.locationData.collectAsState()
@@ -52,12 +50,15 @@ fun MapScreen(
             mapView = mapView,
             mapViewModel = mapViewModel,
             locationViewModel = locationViewModel,
-            navigationViewModel = navigationViewModel
+            navigationViewModel = navigationViewModel,
+            isFullscreen = isFullscreen
         )
 
         //overlayPOIsOnMap(mapView = mapView, poiList = poiList)
 
-        LocationCard(locationData = locationData)
+        if (!isFullscreen.value) {
+            LocationCard(locationData = locationData)
+        }
 
         Row(
             horizontalArrangement = Arrangement.End,

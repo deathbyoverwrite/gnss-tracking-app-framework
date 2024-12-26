@@ -1,7 +1,6 @@
 package de.hhn.gnsstrackingapp.data
 import android.content.Context
 import de.hhn.gnsstrackingapp.R
-// Data class for a Point of Interest (POI)
 data class PointOfInterest(
     val name: String,
     val latitude: Double,
@@ -16,6 +15,4 @@ fun getPoiList(context: Context): List<PointOfInterest> {
     PointOfInterest("Gebäude B", 49.122967116240524, 9.211527839869861, "Historical exhibits.\n\n"  + context.getString(R.string.lorem_ipsum_text)),
     PointOfInterest("Beach Feld", 49.122712955451156, 9.212428275012405, "Ganz cool hier.\n\n"  + context.getString(R.string.lorem_ipsum_text)),
     PointOfInterest("Mensa", 49.122260308035955, 9.210286118729146, "Essen gibts hier.\n\n"  + context.getString(R.string.lorem_ipsum_text)),
-        PointOfInterest("Penny", 46.52545529519397, 21.518459766695358, "Essen gibts hier.\n\n"  + context.getString(R.string.lorem_ipsum_text)),
-
-        )}
+        PointOfInterest("Penny", 46.52545529519397, 21.518459766695358, "Essen gibts hier.\n\n"  + context.getString(R.string.lorem_ipsum_text)),)}

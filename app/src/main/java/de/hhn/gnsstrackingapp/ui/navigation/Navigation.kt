@@ -1,17 +1,18 @@
 package de.hhn.gnsstrackingapp.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import de.hhn.gnsstrackingapp.network.WebServicesProvider
 import de.hhn.gnsstrackingapp.ui.screens.map.LocationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.MapScreen
 import de.hhn.gnsstrackingapp.ui.screens.map.MapViewModel
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsScreen
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsViewModel
-import de.hhn.gnsstrackingapp.ui.screens.statistics.StatisticsScreen
 import de.hhn.gnsstrackingapp.ui.screens.statistics.StatisticsViewModel
 
 @Composable
@@ -22,10 +23,13 @@ fun MainNavigation(
     statisticsViewModel: StatisticsViewModel,
     settingsViewModel: SettingsViewModel,
     //webServicesProvider: WebServicesProvider,
-    navigationViewModel: NavigationViewModel
+    navigationViewModel: NavigationViewModel,
+    isFullscreen: MutableState<Boolean>
 ) {
+    //val isFullscreen = remember { mutableStateOf(false) }
+
     NavHost(navController = navHostController, startDestination = Screen.MapScreen.route) {
-        composable(Screen.MapScreen.route) { MapScreen(mapViewModel, locationViewModel, navigationViewModel) }
+        composable(Screen.MapScreen.route) { MapScreen(mapViewModel, locationViewModel, navigationViewModel, isFullscreen) }
         composable(Screen.StatisticsScreen.route) {
 
         }

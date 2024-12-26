@@ -25,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -69,6 +70,7 @@ fun OsmMapView(
     locationViewModel: LocationViewModel,
     onCircleClick: () -> Unit = {},
     navigationViewModel: NavigationViewModel,
+    isFullscreen: MutableState<Boolean>
 
 ) {
     val locationData by locationViewModel.locationData.collectAsState()
@@ -149,11 +151,15 @@ fun OsmMapView(
     }
     // Show navigation overlay if triggered
     if (showNavigationOverlay.value) {
+        isFullscreen.value = true
         NavigationOverlay(
             locationViewModel = locationViewModel,
             navigationViewModel = navigationViewModel,
             poiLocation = navigationTarget.value ?: return, // Ensure non-null target
-            onClose = { showNavigationOverlay.value = false } // Close overlay
+            onClose = {
+                showNavigationOverlay.value = false
+                isFullscreen.value = false
+            } // Close overlay
 
         )
 
@@ -320,6 +326,20 @@ fun NavigationOverlay(
         systemUiController.isSystemBarsVisible = false
         systemUiController.setSystemBarsColor(Color.Transparent)
     }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black) // Replace with your screen background
+    ) {
+        // Screen Content
+        Text(
+            text = "Full Screen Content",
+            color = Color.White,
+            modifier = Modifier.align(Alignment.Center)
+        )
+    }
+
     // Recalculate direction whenever the current location or POI changes
     LaunchedEffect(currentLocation, poiLocation) {
         currentLocation.location.let { userLocation ->

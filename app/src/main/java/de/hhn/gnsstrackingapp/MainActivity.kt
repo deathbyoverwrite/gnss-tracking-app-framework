@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
@@ -86,12 +88,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             GNSSTrackingAppTheme {
                 val navHostController = rememberNavController()
+                val isFullscreen = remember { mutableStateOf(false) } // Track fullscreen state
+
 
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
                     Scaffold(bottomBar = {
-                        NavigationBarComponent(navHostController)
+                        NavigationBarComponent(navHostController, isFullscreen)
                     }, content = { padding ->
                         Column(Modifier.padding(padding)) {
                             MainNavigation(
@@ -101,7 +105,8 @@ class MainActivity : ComponentActivity() {
                                 statisticsViewModel,
                                 settingsViewModel,
                                 //webServicesProvider,
-                                navigationViewModel
+                                navigationViewModel,
+                                isFullscreen
                             )
                         }
                     })

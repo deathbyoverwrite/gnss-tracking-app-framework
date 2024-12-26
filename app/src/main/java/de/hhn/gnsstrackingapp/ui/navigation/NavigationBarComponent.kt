@@ -13,6 +13,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
@@ -24,6 +25,8 @@ import de.hhn.gnsstrackingapp.ui.theme.Purple40
 @Composable
 fun NavigationBarComponent(
     navController: NavController,
+    isFullscreen: MutableState<Boolean>
+
 ) {
     val selectedItem = remember { mutableIntStateOf(0) }
     val navigationItems = listOf(
@@ -45,25 +48,27 @@ fun NavigationBarComponent(
         )
     )
 
-    NavigationBar {
-        navigationItems.forEachIndexed { index, item ->
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        if (selectedItem.intValue == index) item.selectedIcon
-                        else item.unselectedIcon, contentDescription = item.label
+    if (!isFullscreen.value) {
+        NavigationBar {
+            navigationItems.forEachIndexed { index, item ->
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            if (selectedItem.intValue == index) item.selectedIcon
+                            else item.unselectedIcon, contentDescription = item.label
+                        )
+                    },
+                    label = { Text(item.label) },
+                    selected = selectedItem.intValue == index,
+                    onClick = {
+                        selectedItem.intValue = index
+                        navController.navigate(item.screen.route)
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color.White, indicatorColor = Purple40
                     )
-                },
-                label = { Text(item.label) },
-                selected = selectedItem.intValue == index,
-                onClick = {
-                    selectedItem.intValue = index
-                    navController.navigate(item.screen.route)
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Color.White, indicatorColor = Purple40
                 )
-            )
+            }
         }
     }
 }
