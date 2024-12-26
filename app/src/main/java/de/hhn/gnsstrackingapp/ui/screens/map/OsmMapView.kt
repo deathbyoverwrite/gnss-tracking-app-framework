@@ -1,5 +1,8 @@
 package de.hhn.gnsstrackingapp.ui.screens.map
 
+import android.content.res.Configuration
+import android.view.Surface
+import android.view.WindowManager
 import android.content.Context
 import android.content.Intent
 import android.hardware.Sensor
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -268,7 +272,7 @@ fun overlayPOIsOnMap(mapView: MapView, poiList: List<PointOfInterest>, onMarkerC
         mapView.overlays.add(marker)
     }
 }
-// TODO: Function for POI Dialog
+// TODO: Fucking remove this pete ok cool, hoarderrr
 @Composable
 fun POIDialogGOOGLE(poi: PointOfInterest, onDismiss: () -> Unit) {
     val context = LocalContext.current // Retrieve context within the Composable
@@ -283,9 +287,12 @@ fun POIDialogGOOGLE(poi: PointOfInterest, onDismiss: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween // Align buttons to opposite sides
             ) {
                 TextButton(
-                    onClick = onDismiss
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color.Transparent // Set the text color to transparent
+                    )
                 ) {
-                    Text("Close")
+                    Text("X")
                 }
                 TextButton(
                     onClick = {
@@ -372,9 +379,13 @@ fun NavigationOverlay(
         // Close Button
         Button(
             onClick = onClose,
-            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = Color.Cyan
+            )
+
         ) {
-            Text("Close")
+            Text("X")
         }
     }
 }
@@ -425,9 +436,12 @@ class AzimuthCalculator(
     private val navigationViewModel: NavigationViewModel
 ) : SensorEventListener {
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
     private val gravity = FloatArray(3)
     private val geomagnetic = FloatArray(3)
     private val rotationMatrix = FloatArray(9)
+    private val adjustedRotationMatrix = FloatArray(9)
     private val orientation = FloatArray(3)
 
     private val accelerometerSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -458,7 +472,10 @@ class AzimuthCalculator(
         }
 
         if (SensorManager.getRotationMatrix(rotationMatrix, null, gravity, geomagnetic)) {
-            SensorManager.getOrientation(rotationMatrix, orientation)
+            // Adjust the rotation matrix based on the device's orientation
+            remapForScreenRotation()
+
+            SensorManager.getOrientation(adjustedRotationMatrix, orientation)
 
             // Get azimuth in radians and convert to degrees
             azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
@@ -472,6 +489,43 @@ class AzimuthCalculator(
 
             // Update the navigation view model with the smoothed azimuth
             navigationViewModel.updateDeviceAzimuth(azimuth)
+        }
+    }
+
+    private fun remapForScreenRotation() {
+        val rotation = windowManager.defaultDisplay.rotation
+        when (rotation) {
+            Surface.ROTATION_0 -> {
+                // Portrait mode
+                System.arraycopy(rotationMatrix, 0, adjustedRotationMatrix, 0, rotationMatrix.size)
+            }
+            Surface.ROTATION_90 -> {
+                // Landscape mode, 90 degrees
+                SensorManager.remapCoordinateSystem(
+                    rotationMatrix,
+                    SensorManager.AXIS_Y,
+                    SensorManager.AXIS_MINUS_X,
+                    adjustedRotationMatrix
+                )
+            }
+            Surface.ROTATION_180 -> {
+                // Reverse portrait
+                SensorManager.remapCoordinateSystem(
+                    rotationMatrix,
+                    SensorManager.AXIS_MINUS_X,
+                    SensorManager.AXIS_MINUS_Y,
+                    adjustedRotationMatrix
+                )
+            }
+            Surface.ROTATION_270 -> {
+                // Landscape mode, 270 degrees
+                SensorManager.remapCoordinateSystem(
+                    rotationMatrix,
+                    SensorManager.AXIS_MINUS_Y,
+                    SensorManager.AXIS_X,
+                    adjustedRotationMatrix
+                )
+            }
         }
     }
 
