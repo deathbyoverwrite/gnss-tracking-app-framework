@@ -65,7 +65,7 @@ class NavigationViewModel : ViewModel() {
     fun calculateFinalDirection() {
         val direction = _directionToPoi.value ?: 0f
         val azimuth = _deviceAzimuth.value ?: 0f
-        val finalDirection = (direction + azimuth) % 360
+        val finalDirection = ((direction - azimuth) + 360) % 360
         _finalDirection.postValue(finalDirection)
     }
 }

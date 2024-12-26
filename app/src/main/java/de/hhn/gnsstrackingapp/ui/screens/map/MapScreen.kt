@@ -65,6 +65,7 @@ fun MapScreen(
             verticalAlignment = Alignment.Bottom,
             modifier = Modifier.fillMaxSize()
         ) {
+            if (!isFullscreen.value) {
             GetOwnLocationButton(onClick = {
                 val targetLocation = locationViewModel.locationData.value.location
                 val distance = calculateDistance(
@@ -73,6 +74,7 @@ fun MapScreen(
                     targetLocation.latitude,
                     targetLocation.longitude
                 )
+
                 val animationDuration = calculateAnimationDuration(
                     distance, mapViewModel.zoomLevel
                 )
@@ -85,7 +87,7 @@ fun MapScreen(
                     mapViewModel.centerLocation, mapViewModel.zoomLevel, animationDuration, 0f
                 )
                 mapViewModel.isAnimating.value = false
-            })
+            })}
         }
     }
 }

@@ -318,23 +318,24 @@ fun NavigationOverlay(
 ) {
     val currentLocation by locationViewModel.locationData.collectAsState()
     val finalDirection by navigationViewModel.finalDirection.observeAsState(initial = 0f)
+    val azimuth by navigationViewModel.deviceAzimuth.observeAsState(initial = 0f)
 
     val systemUiController = rememberSystemUiController()
 
     // Hide system UI (status bar, navigation bar)
     LaunchedEffect(Unit) {
         systemUiController.isSystemBarsVisible = false
-        systemUiController.setSystemBarsColor(Color.Transparent)
+        systemUiController.setSystemBarsColor(Color.White)
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black) // Replace with your screen background
+            .background(Color.LightGray) // Replace with your screen background
     ) {
         // Screen Content
         Text(
-            text = "Full Screen Content",
+            text = "",
             color = Color.White,
             modifier = Modifier.align(Alignment.Center)
         )
@@ -363,8 +364,8 @@ fun NavigationOverlay(
             painter = painterResource(id = R.drawable.ic_arrow),
             contentDescription = "Direction Arrow",
             modifier = Modifier
-                .size(100.dp)
-                .align(Alignment.Center)
+                .size(400.dp)
+                .align(Alignment.BottomCenter)
                 .rotate(animatedDirection)
         )
 
@@ -379,48 +380,6 @@ fun NavigationOverlay(
 }
 
 
-
-@Composable
-fun POIDialogOLD(
-    poi: PointOfInterest,
-    navigationViewModel: NavigationViewModel,
-    locationViewModel: LocationViewModel,
-    onNavigate: () -> Unit, // Callback to start in-map navigation
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = { onDismiss() },
-        title = { Text(text = poi.name) },
-        text = { Text(text = poi.description ?: "No description available") },
-        confirmButton = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                TextButton(
-                    onClick = onDismiss
-                ) {
-                    Text("Close")
-                }
-                TextButton(
-                    onClick = {
-                        // Trigger in-app navigation
-                        navigationViewModel.updateDirectionToPoi(
-                            currentLocation = locationViewModel.locationData.value.location,
-                            poiLocation = GeoPoint( poi.latitude ,poi.longitude)
-
-
-                        )
-                        onNavigate() // Show navigation overlay
-                        onDismiss() // Close the dialog
-                    }
-                ) {
-                    Text("Navigate")
-                }
-            }
-        }
-    )
-}
 
 @Composable
 fun POIDialog(
@@ -461,7 +420,10 @@ fun POIDialog(
 }
 
 
-class AzimuthCalculator(context: Context, private val navigationViewModel: NavigationViewModel) : SensorEventListener {
+class AzimuthCalculator(
+    context: Context,
+    private val navigationViewModel: NavigationViewModel
+) : SensorEventListener {
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val gravity = FloatArray(3)
     private val geomagnetic = FloatArray(3)
@@ -471,31 +433,45 @@ class AzimuthCalculator(context: Context, private val navigationViewModel: Navig
     private val accelerometerSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val magneticFieldSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
 
+    private var azimuth: Float = 0f
+    private var lastAzimuth: Float = 0f
+
     init {
-        sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI)
-        sensorManager.registerListener(this, magneticFieldSensor, SensorManager.SENSOR_DELAY_UI)
+        accelerometerSensor?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        }
+        magneticFieldSensor?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        }
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event == null) return
 
-        // Reading accelerometer and magnetic field data
-        if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-            System.arraycopy(event.values, 0, gravity, 0, event.values.size)
-        }
-
-        if (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) {
-            System.arraycopy(event.values, 0, geomagnetic, 0, event.values.size)
-        }
-
-        // Calculate azimuth if we have both accelerometer and magnetic field data
-        if (gravity != null && geomagnetic != null) {
-            val success = SensorManager.getRotationMatrix(rotationMatrix, null, gravity, geomagnetic)
-            if (success) {
-                SensorManager.getOrientation(rotationMatrix, orientation)
-                val azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
-                navigationViewModel.updateDeviceAzimuth(azimuth)
+        when (event.sensor.type) {
+            Sensor.TYPE_ACCELEROMETER -> {
+                System.arraycopy(event.values, 0, gravity, 0, event.values.size)
             }
+            Sensor.TYPE_MAGNETIC_FIELD -> {
+                System.arraycopy(event.values, 0, geomagnetic, 0, event.values.size)
+            }
+        }
+
+        if (SensorManager.getRotationMatrix(rotationMatrix, null, gravity, geomagnetic)) {
+            SensorManager.getOrientation(rotationMatrix, orientation)
+
+            // Get azimuth in radians and convert to degrees
+            azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
+
+            // Normalize azimuth to 0°-360°
+            azimuth = (azimuth + 360) % 360
+
+            // Smooth azimuth using a low-pass filter
+            azimuth = lowPassFilter(azimuth, lastAzimuth)
+            lastAzimuth = azimuth
+
+            // Update the navigation view model with the smoothed azimuth
+            navigationViewModel.updateDeviceAzimuth(azimuth)
         }
     }
 
@@ -503,10 +479,18 @@ class AzimuthCalculator(context: Context, private val navigationViewModel: Navig
         // Handle sensor accuracy changes if needed
     }
 
-    // Unregister sensors when not needed (e.g., in onDestroy)
     fun unregister() {
         sensorManager.unregisterListener(this)
     }
+
+    /**
+     * Low-pass filter to smooth the azimuth values.
+     * @param input Current azimuth value.
+     * @param output Previous smoothed azimuth value.
+     * @return Smoothed azimuth value.
+     */
+    private fun lowPassFilter(input: Float, output: Float): Float {
+        val alpha = 0.25f // Smoothing factor (0 < alpha < 1)
+        return output + alpha * (input - output)
+    }
 }
-
-
