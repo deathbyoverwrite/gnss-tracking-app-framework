@@ -11,6 +11,8 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
 import android.net.Uri
+import android.util.Log
+import android.view.View
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -110,35 +112,38 @@ fun OsmMapView(
     }
 
     var selectedPOI = remember { mutableStateOf<PointOfInterest?>(null) }
-    AndroidView(factory = { mapView },
-        modifier = modifier.fillMaxSize(),
-        update = { mapViewUpdate ->
-            mapViewUpdate.apply {
-                if (!hasMapListener(mapListener)) {
-                    addMapListener(mapListener)
-                }
 
-                updateMapViewState(mapView, mapViewModel, locationData, onCircleClick)
-
-                // TODO: POI Functionality Begin
-                // Overlay POIs on the map
-                overlayPOIsOnMap(
-                    mapView = this,
-                    poiList = getPoiList(context = this.context),
-                    onMarkerClick = { poi ->
-                        // Set the clicked POI to show in the dialog
-                        selectedPOI.value = poi
-
-                        println("POI Clicked: ${poi.name}")
+        AndroidView(factory = { mapView },
+            modifier = if (isFullscreen.value) Modifier.size(0.dp) else Modifier.fillMaxSize(),
+            update = { mapViewUpdate ->
+                mapViewUpdate.apply {
+                    if (!hasMapListener(mapListener)) {
+                        addMapListener(mapListener)
                     }
-                )
 
-                // TODO: POI Functionality END
+                    visibility = if (isFullscreen.value) View.GONE else View.VISIBLE
+                    updateMapViewState(mapView, mapViewModel, locationData, onCircleClick)
 
-                // Refresh the map view
-                invalidate()
-            }
-        })
+                    // TODO: POI Functionality Begin
+                    // Overlay POIs on the map
+                    overlayPOIsOnMap(
+                        mapView = this,
+                        poiList = getPoiList(context = this.context),
+                        onMarkerClick = { poi ->
+                            // Set the clicked POI to show in the dialog
+                            selectedPOI.value = poi
+
+                            println("POI Clicked: ${poi.name}")
+                        }
+                    )
+
+                    // TODO: POI Functionality END
+
+                    // Refresh the map view
+                    invalidate()
+                }
+            })
+
     // Show the POI dialog when a marker is clicked
 
     // Show POI Dialog when a marker is clicked
@@ -161,8 +166,12 @@ fun OsmMapView(
             navigationViewModel = navigationViewModel,
             poiLocation = navigationTarget.value ?: return, // Ensure non-null target
             onClose = {
-                showNavigationOverlay.value = false
                 isFullscreen.value = false
+
+                showNavigationOverlay.value = false
+
+
+
             } // Close overlay
 
         )
@@ -257,6 +266,11 @@ private fun updateMapViewState(
 // TODO: Function to overlay POIs on the map
 fun overlayPOIsOnMap(mapView: MapView, poiList: List<PointOfInterest>, onMarkerClick: (PointOfInterest) -> Unit
 ) {
+
+    if (mapView.repository == null) {
+        Log.e("MapView", "MapView repository is not initialized")
+        return
+    }
     poiList.forEach { poi ->
         val marker = Marker(mapView).apply {
             position = GeoPoint(poi.latitude, poi.longitude)
@@ -325,27 +339,23 @@ fun NavigationOverlay(
 ) {
     val currentLocation by locationViewModel.locationData.collectAsState()
     val finalDirection by navigationViewModel.finalDirection.observeAsState(initial = 0f)
-    val azimuth by navigationViewModel.deviceAzimuth.observeAsState(initial = 0f)
+
+
 
     val systemUiController = rememberSystemUiController()
 
     // Hide system UI (status bar, navigation bar)
     LaunchedEffect(Unit) {
         systemUiController.isSystemBarsVisible = false
-        systemUiController.setSystemBarsColor(Color.White)
+        systemUiController.setSystemBarsColor(Color.Yellow)
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.LightGray) // Replace with your screen background
+            .background(Color.Transparent) // Replace with your screen background
     ) {
-        // Screen Content
-        Text(
-            text = "",
-            color = Color.White,
-            modifier = Modifier.align(Alignment.Center)
-        )
+
     }
 
     // Recalculate direction whenever the current location or POI changes
@@ -368,10 +378,10 @@ fun NavigationOverlay(
     ) {
         // Directional Arrow
         androidx.compose.foundation.Image(
-            painter = painterResource(id = R.drawable.ic_arrow),
+            painter = painterResource(id = R.drawable.baseline_double_arrow_24),
             contentDescription = "Direction Arrow",
             modifier = Modifier
-                .size(400.dp)
+                .size(200.dp)
                 .align(Alignment.BottomCenter)
                 .rotate(animatedDirection)
         )

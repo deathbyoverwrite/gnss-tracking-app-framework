@@ -45,51 +45,56 @@ fun MapScreen(
     val mapView = rememberMapViewWithLifecycle()
     val locationData by locationViewModel.locationData.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        OsmMapView(
-            mapView = mapView,
-            mapViewModel = mapViewModel,
-            locationViewModel = locationViewModel,
-            navigationViewModel = navigationViewModel,
-            isFullscreen = isFullscreen
-        )
+        Box(modifier = Modifier.fillMaxSize()) {
+            OsmMapView(
+                mapView = mapView,
+                mapViewModel = mapViewModel,
+                locationViewModel = locationViewModel,
+                navigationViewModel = navigationViewModel,
+                isFullscreen = isFullscreen
+            )
 
-        //overlayPOIsOnMap(mapView = mapView, poiList = poiList)
+            //overlayPOIsOnMap(mapView = mapView, poiList = poiList)
 
-        if (!isFullscreen.value) {
-            LocationCard(locationData = locationData)
-        }
-
-        Row(
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.Bottom,
-            modifier = Modifier.fillMaxSize()
-        ) {
             if (!isFullscreen.value) {
-            GetOwnLocationButton(onClick = {
-                val targetLocation = locationViewModel.locationData.value.location
-                val distance = calculateDistance(
-                    mapViewModel.centerLocation.latitude,
-                    mapViewModel.centerLocation.longitude,
-                    targetLocation.latitude,
-                    targetLocation.longitude
-                )
+                LocationCard(locationData = locationData)
+            }
 
-                val animationDuration = calculateAnimationDuration(
-                    distance, mapViewModel.zoomLevel
-                )
+            Row(
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (!isFullscreen.value) {
+                    GetOwnLocationButton(onClick = {
+                        val targetLocation = locationViewModel.locationData.value.location
+                        val distance = calculateDistance(
+                            mapViewModel.centerLocation.latitude,
+                            mapViewModel.centerLocation.longitude,
+                            targetLocation.latitude,
+                            targetLocation.longitude
+                        )
 
-                mapViewModel.centerLocation = targetLocation
-                mapViewModel.zoomLevel = 20.0
+                        val animationDuration = calculateAnimationDuration(
+                            distance, mapViewModel.zoomLevel
+                        )
 
-                mapViewModel.isAnimating.value = true
-                mapView.controller.animateTo(
-                    mapViewModel.centerLocation, mapViewModel.zoomLevel, animationDuration, 0f
-                )
-                mapViewModel.isAnimating.value = false
-            })}
+                        mapViewModel.centerLocation = targetLocation
+                        mapViewModel.zoomLevel = 20.0
+
+                        mapViewModel.isAnimating.value = true
+                        mapView.controller.animateTo(
+                            mapViewModel.centerLocation,
+                            mapViewModel.zoomLevel,
+                            animationDuration,
+                            0f
+                        )
+                        mapViewModel.isAnimating.value = false
+                    })
+                }
+            }
         }
-    }
+
 }
 
 @Composable
