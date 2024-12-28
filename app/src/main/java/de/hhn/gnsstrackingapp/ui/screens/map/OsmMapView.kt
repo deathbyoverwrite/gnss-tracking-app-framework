@@ -1,6 +1,4 @@
 package de.hhn.gnsstrackingapp.ui.screens.map
-
-import android.content.res.Configuration
 import android.view.Surface
 import android.view.WindowManager
 import android.content.Context
@@ -17,15 +15,18 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,6 +65,8 @@ import org.osmdroid.views.overlay.ScaleBarOverlay
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
 import kotlin.collections.forEach
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.ui.unit.sp
+
 
 
 
@@ -83,6 +86,8 @@ fun OsmMapView(
 
     val showNavigationOverlay = remember { mutableStateOf(false) }
     val navigationTarget = remember { mutableStateOf<Location?>(null) }
+
+
 
 
     DisposableEffect(mapView) {
@@ -356,6 +361,9 @@ fun NavigationOverlay(
             .background(Color.Transparent) // Replace with your screen background
     ) {
 
+
+
+
     }
 
     // Recalculate direction whenever the current location or POI changes
@@ -384,6 +392,12 @@ fun NavigationOverlay(
                 .size(150.dp)
                 .align(Alignment.BottomCenter)
                 .rotate(animatedDirection)
+        )
+
+        MonitorGeofence(
+            locationViewModel = locationViewModel,
+            poiList = getPoiList(context = LocalContext.current),
+            geofenceRadius = 50f // Adjust the radius as needed
         )
 
         // Close Button
@@ -558,3 +572,104 @@ class AzimuthCalculator(
         return output + alpha * (input - output)
     }
 }
+
+
+
+@Composable
+fun GeofenceDialog(
+    poi: PointOfInterest,
+    isVisible: MutableState<Boolean>,
+    onDismiss: () -> Unit,
+    onAction: () -> Unit
+) {
+    if (isVisible.value) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart) // Position at the upper-left corner
+                    .padding(16.dp) // Add padding to avoid screen edges
+                    .size(width = 100.dp, height = 120.dp) // Define a fixed size for the dialog
+                    .background(Color.Cyan.copy(alpha = 0.2f), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)) // Rounded corners
+                    .padding(12.dp) // Inner padding for content
+            ) {
+            Column {
+                Icon(
+                    imageVector = Icons.Filled.Home, // Use a built-in house icon
+                    contentDescription = "House Icon",
+                    tint = Color.White, // Set icon color
+                    modifier = Modifier.size(16.dp).align(Alignment.CenterHorizontally), // Adjust icon size
+
+                )
+                Text(
+                    text = "You've reached\n${poi.name}!",
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+
+                )
+                Text(
+                    text = poi.description ?: "You are now at this location.",
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+
+                )
+
+                }}}}
+}
+
+
+
+@Composable
+fun MonitorGeofence(
+    locationViewModel: LocationViewModel,
+    poiList: List<PointOfInterest>,
+    geofenceRadius: Float = 10f // Radius in meters
+) {
+    val currentLocation by locationViewModel.locationData.collectAsState()
+    val showDialog = remember { mutableStateOf(false) }
+    val reachedPOI = remember { mutableStateOf<PointOfInterest?>(null) }
+
+    // Check if the user is within a geofenced area
+    // Check if the user is within a geofenced area
+    LaunchedEffect(currentLocation) {
+        var isWithinGeofence = false
+        poiList.forEach { poi ->
+            val distance = calculateDistance(
+                currentLocation.location.latitude,
+                currentLocation.location.longitude,
+                poi.latitude,
+                poi.longitude
+            )
+            if (distance <= geofenceRadius) {
+                reachedPOI.value = poi
+                showDialog.value = true
+                isWithinGeofence = true
+                return@forEach
+            }
+        }
+
+        // Hide the dialog if the user exits the geofence
+        if (!isWithinGeofence) {
+            showDialog.value = false
+            reachedPOI.value = null
+        }
+    }
+
+    // Show the dialog if a POI is reached
+    reachedPOI.value?.let { poi ->
+        GeofenceDialog(
+            poi = poi,
+            isVisible = showDialog,
+            onDismiss = { showDialog.value = false },
+            onAction = {
+                // Perform any action, like navigating to a different screen
+                Log.d("Geofence", "Action triggered for ${poi.name}")
+            }
+        )
+    }
+}
+

@@ -61,5 +61,11 @@ fun getPoiList(context: Context): List<PointOfInterest> {
             "Essen gibts hier.\n\n" + context.getString(R.string.lorem_ipsum_text)
         ),
 
+        PointOfInterest(
+            "Buna si Bunu",
+            46.52687184800333, 21.51790011495106,
+            "Arici stau aici."
+        ),
+
         )
 }
