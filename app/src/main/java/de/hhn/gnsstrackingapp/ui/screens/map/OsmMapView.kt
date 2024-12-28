@@ -374,14 +374,14 @@ fun NavigationOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f))
+            .background(Color.Black)
     ) {
         // Directional Arrow
         androidx.compose.foundation.Image(
             painter = painterResource(id = R.drawable.baseline_double_arrow_24),
             contentDescription = "Direction Arrow",
             modifier = Modifier
-                .size(200.dp)
+                .size(150.dp)
                 .align(Alignment.BottomCenter)
                 .rotate(animatedDirection)
         )
