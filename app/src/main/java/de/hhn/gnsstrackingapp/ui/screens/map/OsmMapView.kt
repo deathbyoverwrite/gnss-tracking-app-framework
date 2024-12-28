@@ -346,8 +346,17 @@ fun NavigationOverlay(
     val finalDirection by navigationViewModel.finalDirection.observeAsState(initial = 0f)
 
 
-
     val systemUiController = rememberSystemUiController()
+
+    val distanceToPoi = remember { mutableStateOf(0.0) }
+    LaunchedEffect(currentLocation, poiLocation) {
+        distanceToPoi.value = calculateDistance(
+            currentLocation.location.latitude,
+            currentLocation.location.longitude,
+            poiLocation.latitude,
+            poiLocation.longitude
+        )
+    }
 
     // Hide system UI (status bar, navigation bar)
     LaunchedEffect(Unit) {
@@ -384,6 +393,21 @@ fun NavigationOverlay(
             .fillMaxSize()
             .background(Color.Black)
     ) {
+        // Display distance to POI
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+                .background(Color.DarkGray.copy(alpha = 0.7f), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                .padding(8.dp)
+        ) {
+            Text(
+                text = "Distance: ${String.format("%.2f", distanceToPoi.value)} m",
+                color = Color.White,
+                fontSize = 14.sp
+            )
+        }
+
         // Directional Arrow
         androidx.compose.foundation.Image(
             painter = painterResource(id = R.drawable.baseline_double_arrow_24),
@@ -633,7 +657,6 @@ fun MonitorGeofence(
     val showDialog = remember { mutableStateOf(false) }
     val reachedPOI = remember { mutableStateOf<PointOfInterest?>(null) }
 
-    // Check if the user is within a geofenced area
     // Check if the user is within a geofenced area
     LaunchedEffect(currentLocation) {
         var isWithinGeofence = false
