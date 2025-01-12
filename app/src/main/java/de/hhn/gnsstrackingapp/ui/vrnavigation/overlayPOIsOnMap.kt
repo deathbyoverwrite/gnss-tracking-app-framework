@@ -9,7 +9,8 @@ import org.osmdroid.views.overlay.Marker
 /**
  * Function to Overlay Points of Interest on the OSM Map View
  */
-fun overlayPOIsOnMap(mapView: MapView, poiList: List<PointOfInterest>, onMarkerClick: (PointOfInterest) -> Unit
+fun overlayPOIsOnMap(
+    mapView: MapView, poiList: List<PointOfInterest>, onMarkerClick: (PointOfInterest) -> Unit
 ) {
 
     if (mapView.repository == null) {

@@ -14,7 +14,8 @@ fun fetchRouteFromOpenRouteService(
     onRouteFetched: (List<GeoPoint>) -> Unit
 ) {
     val apiKey = "5b3ce3597851110001cf62487b426dbfa8214535808ed56ded754e91"
-    val url = "https://api.openrouteservice.org/v2/directions/foot-walking?api_key=$apiKey&start=${start.longitude},${start.latitude}&end=${end.longitude},${end.latitude}"
+    val url =
+        "https://api.openrouteservice.org/v2/directions/foot-walking?api_key=$apiKey&start=${start.longitude},${start.latitude}&end=${end.longitude},${end.latitude}"
 
     CoroutineScope(Dispatchers.IO).launch {
         try {

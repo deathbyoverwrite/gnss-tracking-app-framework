@@ -20,12 +20,12 @@ import de.hhn.gnsstrackingapp.services.ServiceManager
 import de.hhn.gnsstrackingapp.ui.navigation.MainNavigation
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationBarComponent
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
-import de.hhn.gnsstrackingapp.ui.vrnavigation.AzimuthCalculator
 import de.hhn.gnsstrackingapp.ui.screens.map.LocationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.MapViewModel
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsViewModel
 import de.hhn.gnsstrackingapp.ui.screens.statistics.StatisticsViewModel
 import de.hhn.gnsstrackingapp.ui.theme.GNSSTrackingAppTheme
+import de.hhn.gnsstrackingapp.ui.vrnavigation.AzimuthCalculator
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.osmdroid.util.GeoPoint
 
@@ -71,14 +71,14 @@ class MainActivity : ComponentActivity() {
 
         //val webServicesProvider = WebServicesProvider("ws://${webSocketIp.value}:80")
         //lifecycleScope.launch {
-         //   webServicesProvider.startSocket()
+        //   webServicesProvider.startSocket()
         //}
         //lifecycleScope.launch {
-         //   for (socketUpdate in webServicesProvider.socketEventChannel) {
+        //   for (socketUpdate in webServicesProvider.socketEventChannel) {
         //        socketUpdate.text?.let { jsonData ->
-          //          statisticsViewModel.updateGnssOutput(parseGnssJson(jsonData))
-            //    }
-         //   }
+        //          statisticsViewModel.updateGnssOutput(parseGnssJson(jsonData))
+        //    }
+        //   }
         ///}
 
         setContent {

@@ -8,9 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,20 +30,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import de.hhn.gnsstrackingapp.R
 import de.hhn.gnsstrackingapp.data.PointOfInterest
 import de.hhn.gnsstrackingapp.data.getPoiList
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
+import de.hhn.gnsstrackingapp.ui.streetnavigation.fetchRouteFromOpenRouteService
+import de.hhn.gnsstrackingapp.ui.vrnavigation.GeofenceDialog
+import de.hhn.gnsstrackingapp.ui.vrnavigation.POIDialog
+import de.hhn.gnsstrackingapp.ui.vrnavigation.overlayPOIsOnMap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -55,18 +60,8 @@ import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.ScaleBarOverlay
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
-import kotlin.collections.forEach
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
-import de.hhn.gnsstrackingapp.ui.streetnavigation.fetchRouteFromOpenRouteService
-import de.hhn.gnsstrackingapp.ui.vrnavigation.GeofenceDialog
-import de.hhn.gnsstrackingapp.ui.vrnavigation.POIDialog
-import de.hhn.gnsstrackingapp.ui.vrnavigation.overlayPOIsOnMap
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import java.util.Locale
+import kotlin.collections.forEach
 
 
 @Composable
@@ -158,8 +153,7 @@ fun OsmMapView(
                 navigationTarget.value = poiLocation // Set navigation target
                 showNavigationOverlay.value = true  // Trigger navigation overlay
             },
-            onNavigateNormal = {
-                    poiLocation ->
+            onNavigateNormal = { poiLocation ->
                 navigationTarget.value = poiLocation // Set navigation target
                 showNavigationOverlayNormal.value = true  // Trigger navigation overlay
             },
@@ -202,7 +196,7 @@ fun OsmMapView(
             },
 
 
-        )
+            )
 
     }
 }
@@ -292,6 +286,8 @@ private fun updateMapViewState(
 }
 
 /**
+ *   OVERLAY FOR ROCKID VR GLASSES
+ *
  * Composable function to display a navigation overlay for guiding the user towards a point of interest (POI).
  *
  * @param locationViewModel The ViewModel responsible for managing the user's current location data.
@@ -358,8 +354,10 @@ fun NavigationOverlay(
     }
 
 
-    val animatedDirection by animateFloatAsState(targetValue = finalDirection,
-        animationSpec = tween(durationMillis = 150))
+    val animatedDirection by animateFloatAsState(
+        targetValue = finalDirection,
+        animationSpec = tween(durationMillis = 150)
+    )
 
     Box(
         modifier = Modifier
@@ -417,6 +415,21 @@ fun NavigationOverlay(
 }
 
 
+/**
+ * Composable function to display a navigation overlay for guiding the user towards a point of interest (POI).
+ *
+ * @param locationViewModel The ViewModel responsible for managing the user's current location data.
+ * @param navigationViewModel The ViewModel responsible for managing navigation-related data such as direction.
+ * @param poiLocation The location of the target point of interest.
+ *
+ * The overlay displays:
+ * - The current distance to the POI.
+ * - A directional arrow indicating the user's orientation relative to the POI.
+ * - A close button for dismissing the overlay.
+ * - Automatic calculation of the distance to the POI using `calculateDistance`.
+ * - Hides system bars for a full-screen experience.
+ * - Displays the Current Street the User is on
+ */
 @Composable
 fun NavigationOverlayWithStreetRoute(
     locationViewModel: LocationViewModel,
@@ -431,8 +444,10 @@ fun NavigationOverlayWithStreetRoute(
     val isRouteFetched = remember { mutableStateOf(false) }
 
     val finalDirection by navigationViewModel.finalDirection.observeAsState(initial = 0f)
-    val animatedDirection by animateFloatAsState(targetValue = finalDirection,
-        animationSpec = tween(durationMillis = 150))
+    val animatedDirection by animateFloatAsState(
+        targetValue = finalDirection,
+        animationSpec = tween(durationMillis = 150)
+    )
 
 
     DisposableEffect(mapView) {
@@ -450,7 +465,10 @@ fun NavigationOverlayWithStreetRoute(
     LaunchedEffect(poiLocation) {
         if (!isRouteFetched.value) {
             fetchRouteFromOpenRouteService(
-                start = GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude),
+                start = GeoPoint(
+                    currentLocation.location.latitude,
+                    currentLocation.location.longitude
+                ),
                 end = GeoPoint(poiLocation.latitude, poiLocation.longitude)
             ) { route ->
                 routePoints.value = route
@@ -458,10 +476,6 @@ fun NavigationOverlayWithStreetRoute(
             }
         }
     }
-
-
-
-
 
 
     val distanceToPoi = remember { mutableStateOf(0.0) }
@@ -476,7 +490,8 @@ fun NavigationOverlayWithStreetRoute(
 
     // Keep map oriented with the POI at the top and rotate accordingly
     LaunchedEffect(currentLocation) {
-        val userGeoPoint = GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude)
+        val userGeoPoint =
+            GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude)
 
         mapView.mapOrientation = animatedDirection - 180
         mapView.controller.setCenter(userGeoPoint)
@@ -509,24 +524,31 @@ fun NavigationOverlayWithStreetRoute(
             },
             modifier = Modifier.fillMaxSize(),
             update = { map ->
-                val userGeoPoint = GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude)
+                val userGeoPoint =
+                    GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude)
                 val poiGeoPoint = GeoPoint(poiLocation.latitude, poiLocation.longitude)
 
                 map.overlays.clear()
 
 
-
                 // User Marker
                 val userMarker = org.osmdroid.views.overlay.Marker(map).apply {
                     position = userGeoPoint
-                    setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_CENTER)
-                    icon = ContextCompat.getDrawable(context, org.osmdroid.library.R.drawable.person)
+                    setAnchor(
+                        org.osmdroid.views.overlay.Marker.ANCHOR_CENTER,
+                        org.osmdroid.views.overlay.Marker.ANCHOR_CENTER
+                    )
+                    icon =
+                        ContextCompat.getDrawable(context, org.osmdroid.library.R.drawable.person)
                 }
 
                 // POI Marker
                 val poiMarker = org.osmdroid.views.overlay.Marker(map).apply {
                     position = poiGeoPoint
-                    setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_CENTER)
+                    setAnchor(
+                        org.osmdroid.views.overlay.Marker.ANCHOR_CENTER,
+                        org.osmdroid.views.overlay.Marker.ANCHOR_CENTER
+                    )
                 }
 
                 // Draw the route polyline
@@ -542,7 +564,12 @@ fun NavigationOverlayWithStreetRoute(
             }
         )
 
-        val currentStreetName = getStreetName(GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude))
+        val currentStreetName = getStreetName(
+            GeoPoint(
+                currentLocation.location.latitude,
+                currentLocation.location.longitude
+            )
+        )
 
 
         Box(
@@ -551,19 +578,19 @@ fun NavigationOverlayWithStreetRoute(
                 .padding(5.dp)
                 .size(100.dp)
                 .align(Alignment.TopStart)
-                .background(Color.DarkGray.copy(alpha = 0.5f) , shape = RoundedCornerShape(20.dp))
-                ){
+                .background(Color.DarkGray.copy(alpha = 0.5f), shape = RoundedCornerShape(20.dp))
+        ) {
 
-        Image(
-            painter = painterResource(id = R.drawable.baseline_double_arrow_24),
-            contentDescription = "Direction Arrow",
-            colorFilter = ColorFilter.tint(Color.Blue),
-            modifier = Modifier
-                .size(95.dp)
-                .align(Alignment.Center)
-                .rotate(animatedDirection)
+            Image(
+                painter = painterResource(id = R.drawable.baseline_double_arrow_24),
+                contentDescription = "Direction Arrow",
+                colorFilter = ColorFilter.tint(Color.Blue),
+                modifier = Modifier
+                    .size(95.dp)
+                    .align(Alignment.Center)
+                    .rotate(animatedDirection)
 
-        )
+            )
 
 
         }
@@ -574,11 +601,11 @@ fun NavigationOverlayWithStreetRoute(
                 .padding(5.dp)
                 .size(width = 200.dp, height = 50.dp)
                 .align(Alignment.BottomStart)
-                .background(Color.DarkGray.copy(alpha = 0.5f) , shape = RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center
-        ){
+                .background(Color.DarkGray.copy(alpha = 0.5f), shape = RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center
+        ) {
 
-                Text(text = "🚸 $currentStreetName", color = Color.White, fontSize = 18.sp)
+            Text(text = "🚸 $currentStreetName", color = Color.White, fontSize = 18.sp)
 
         }
 
@@ -588,15 +615,18 @@ fun NavigationOverlayWithStreetRoute(
                 .padding(5.dp)
                 .size(width = 150.dp, height = 50.dp)
                 .align(Alignment.BottomEnd)
-                .background(Color.DarkGray.copy(alpha = 0.5f) , shape = RoundedCornerShape(20.dp)),
+                .background(Color.DarkGray.copy(alpha = 0.5f), shape = RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center
-        ){
+        ) {
 
-            Text(text = "\uD83D\uDC63 ${String.format("%.2f", distanceToPoi.value)} m", color = Color.White, fontSize = 18.sp, fontStyle = FontStyle.Italic)
+            Text(
+                text = "\uD83D\uDC63 ${String.format("%.2f", distanceToPoi.value)} m",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontStyle = FontStyle.Italic
+            )
 
         }
-
-
 
 
         // Close Button
@@ -610,8 +640,6 @@ fun NavigationOverlayWithStreetRoute(
         }
     }
 }
-
-
 
 
 /**
@@ -674,7 +702,7 @@ fun MonitorGeofence(
                 Log.d("Geofence", "Action triggered for ${poi.name}")
             },
 
-        )
+            )
     }
 }
 

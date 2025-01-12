@@ -28,12 +28,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
 import de.hhn.gnsstrackingapp.ui.theme.Purple40
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
-import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
 
 @Composable
 fun MapScreen(
@@ -45,55 +45,55 @@ fun MapScreen(
     val mapView = rememberMapViewWithLifecycle()
     val locationData by locationViewModel.locationData.collectAsState()
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            OsmMapView(
-                mapView = mapView,
-                mapViewModel = mapViewModel,
-                locationViewModel = locationViewModel,
-                navigationViewModel = navigationViewModel,
-                isFullscreen = isFullscreen
-            )
+    Box(modifier = Modifier.fillMaxSize()) {
+        OsmMapView(
+            mapView = mapView,
+            mapViewModel = mapViewModel,
+            locationViewModel = locationViewModel,
+            navigationViewModel = navigationViewModel,
+            isFullscreen = isFullscreen
+        )
 
-            //overlayPOIsOnMap(mapView = mapView, poiList = poiList)
+        //overlayPOIsOnMap(mapView = mapView, poiList = poiList)
 
+        if (!isFullscreen.value) {
+            LocationCard(locationData = locationData)
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier.fillMaxSize()
+        ) {
             if (!isFullscreen.value) {
-                LocationCard(locationData = locationData)
-            }
+                GetOwnLocationButton(onClick = {
+                    val targetLocation = locationViewModel.locationData.value.location
+                    val distance = calculateDistance(
+                        mapViewModel.centerLocation.latitude,
+                        mapViewModel.centerLocation.longitude,
+                        targetLocation.latitude,
+                        targetLocation.longitude
+                    )
 
-            Row(
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.Bottom,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (!isFullscreen.value) {
-                    GetOwnLocationButton(onClick = {
-                        val targetLocation = locationViewModel.locationData.value.location
-                        val distance = calculateDistance(
-                            mapViewModel.centerLocation.latitude,
-                            mapViewModel.centerLocation.longitude,
-                            targetLocation.latitude,
-                            targetLocation.longitude
-                        )
+                    val animationDuration = calculateAnimationDuration(
+                        distance, mapViewModel.zoomLevel
+                    )
 
-                        val animationDuration = calculateAnimationDuration(
-                            distance, mapViewModel.zoomLevel
-                        )
+                    mapViewModel.centerLocation = targetLocation
+                    mapViewModel.zoomLevel = 20.0
 
-                        mapViewModel.centerLocation = targetLocation
-                        mapViewModel.zoomLevel = 20.0
-
-                        mapViewModel.isAnimating.value = true
-                        mapView.controller.animateTo(
-                            mapViewModel.centerLocation,
-                            mapViewModel.zoomLevel,
-                            animationDuration,
-                            0f
-                        )
-                        mapViewModel.isAnimating.value = false
-                    })
-                }
+                    mapViewModel.isAnimating.value = true
+                    mapView.controller.animateTo(
+                        mapViewModel.centerLocation,
+                        mapViewModel.zoomLevel,
+                        animationDuration,
+                        0f
+                    )
+                    mapViewModel.isAnimating.value = false
+                })
             }
         }
+    }
 
 }
 

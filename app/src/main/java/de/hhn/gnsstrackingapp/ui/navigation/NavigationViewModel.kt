@@ -55,7 +55,8 @@ class NavigationViewModel : ViewModel() {
 
         val deltaLon = lon2 - lon1
         val y = Math.sin(deltaLon) * Math.cos(lat2)
-        val x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLon)
+        val x =
+            Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLon)
         return (Math.toDegrees(Math.atan2(y, x)).toFloat() + 360) % 360
     }
 

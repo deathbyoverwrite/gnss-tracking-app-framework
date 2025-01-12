@@ -2,8 +2,6 @@ package de.hhn.gnsstrackingapp.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -29,7 +27,14 @@ fun MainNavigation(
     //val isFullscreen = remember { mutableStateOf(false) }
 
     NavHost(navController = navHostController, startDestination = Screen.MapScreen.route) {
-        composable(Screen.MapScreen.route) { MapScreen(mapViewModel, locationViewModel, navigationViewModel, isFullscreen) }
+        composable(Screen.MapScreen.route) {
+            MapScreen(
+                mapViewModel,
+                locationViewModel,
+                navigationViewModel,
+                isFullscreen
+            )
+        }
         composable(Screen.StatisticsScreen.route) {
 
         }
