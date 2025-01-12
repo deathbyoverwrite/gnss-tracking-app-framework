@@ -1,15 +1,20 @@
 package de.hhn.gnsstrackingapp.ui.screens.map
 
+import android.location.Geocoder
 import android.location.Location
 import android.util.Log
 import android.view.View
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -26,8 +31,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -49,10 +58,15 @@ import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
 import kotlin.collections.forEach
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import de.hhn.gnsstrackingapp.ui.streetnavigation.fetchRouteFromOpenRouteService
 import de.hhn.gnsstrackingapp.ui.vrnavigation.GeofenceDialog
 import de.hhn.gnsstrackingapp.ui.vrnavigation.POIDialog
 import de.hhn.gnsstrackingapp.ui.vrnavigation.overlayPOIsOnMap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
 
 @Composable
@@ -344,7 +358,8 @@ fun NavigationOverlay(
     }
 
 
-    val animatedDirection by animateFloatAsState(targetValue = finalDirection)
+    val animatedDirection by animateFloatAsState(targetValue = finalDirection,
+        animationSpec = tween(durationMillis = 150))
 
     Box(
         modifier = Modifier
@@ -413,10 +428,24 @@ fun NavigationOverlayWithStreetRoute(
     val context = LocalContext.current
     val currentLocation by locationViewModel.locationData.collectAsState()
     val routePoints = remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
-    val nextTurnAngle = remember { mutableStateOf(0f) }
-    val nextTurnInstruction = remember { mutableStateOf("Starting...") }
     val isRouteFetched = remember { mutableStateOf(false) }
 
+    val finalDirection by navigationViewModel.finalDirection.observeAsState(initial = 0f)
+    val animatedDirection by animateFloatAsState(targetValue = finalDirection,
+        animationSpec = tween(durationMillis = 150))
+
+
+    DisposableEffect(mapView) {
+        onDispose {
+            mapView.onPause()
+            mapView.onDetach()
+        }
+    }
+    val systemUiController = rememberSystemUiController()
+    LaunchedEffect(Unit) {
+        systemUiController.isSystemBarsVisible = false
+        systemUiController.setSystemBarsColor(Color.Yellow)
+    }
     // Fetch route once when POI is selected
     LaunchedEffect(poiLocation) {
         if (!isRouteFetched.value) {
@@ -430,17 +459,46 @@ fun NavigationOverlayWithStreetRoute(
         }
     }
 
-    // Keep map centered and update turn instructions
+
+
+
+
+
+    val distanceToPoi = remember { mutableStateOf(0.0) }
+    LaunchedEffect(currentLocation, poiLocation) {
+        distanceToPoi.value = calculateDistance(
+            currentLocation.location.latitude,
+            currentLocation.location.longitude,
+            poiLocation.latitude,
+            poiLocation.longitude
+        )
+    }
+
+    // Keep map oriented with the POI at the top and rotate accordingly
     LaunchedEffect(currentLocation) {
-        mapView.controller.animateTo(GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude))
-        if (routePoints.value.isNotEmpty()) {
-            val nextTurn = getNextTurnInstruction(currentLocation, routePoints.value)
-            nextTurnInstruction.value = nextTurn.instruction
-            nextTurnAngle.value = nextTurn.angle
+        val userGeoPoint = GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude)
+
+        mapView.mapOrientation = animatedDirection - 180
+        mapView.controller.setCenter(userGeoPoint)
+        mapView.invalidate()
+
+    }
+
+    LaunchedEffect(currentLocation, poiLocation) {
+        currentLocation.location.let { userLocation ->
+            val userGeoPoint = GeoPoint(userLocation.latitude, userLocation.longitude)
+
+            // Update the direction to the POI in the NavigationViewModel
+            navigationViewModel.updateDirectionToPoi(
+                userGeoPoint,
+                GeoPoint(poiLocation.latitude, poiLocation.longitude)
+            )
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+
+
         AndroidView(
             factory = {
                 mapView.apply {
@@ -456,10 +514,13 @@ fun NavigationOverlayWithStreetRoute(
 
                 map.overlays.clear()
 
+
+
                 // User Marker
                 val userMarker = org.osmdroid.views.overlay.Marker(map).apply {
                     position = userGeoPoint
                     setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_CENTER)
+                    icon = ContextCompat.getDrawable(context, org.osmdroid.library.R.drawable.person)
                 }
 
                 // POI Marker
@@ -472,36 +533,71 @@ fun NavigationOverlayWithStreetRoute(
                 val roadOverlay = org.osmdroid.views.overlay.Polyline().apply {
                     setPoints(routePoints.value)
                     outlinePaint.color = android.graphics.Color.BLUE
-                    outlinePaint.strokeWidth = 8f
+                    outlinePaint.strokeWidth = 15f
                 }
+
 
                 map.overlays.addAll(listOf(userMarker, poiMarker, roadOverlay))
                 map.invalidate()
             }
         )
 
-        // Turn Arrow Display
-        Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-            Image(
-                painter = painterResource(id = R.drawable.baseline_double_arrow_24),
-                contentDescription = "Turn Arrow",
-                modifier = Modifier
-                    .size(100.dp)
-                    .rotate(nextTurnAngle.value)
+        val currentStreetName = getStreetName(GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude))
 
-            )
-        }
 
-        // Turn Instructions Display
         Box(
+
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.7f))
-                .padding(8.dp)
-        ) {
-            Text(text = nextTurnInstruction.value, color = Color.White, fontSize = 18.sp)
+                .padding(5.dp)
+                .size(100.dp)
+                .align(Alignment.TopStart)
+                .background(Color.DarkGray.copy(alpha = 0.5f) , shape = RoundedCornerShape(20.dp))
+                ){
+
+        Image(
+            painter = painterResource(id = R.drawable.baseline_double_arrow_24),
+            contentDescription = "Direction Arrow",
+            colorFilter = ColorFilter.tint(Color.Blue),
+            modifier = Modifier
+                .size(95.dp)
+                .align(Alignment.Center)
+                .rotate(animatedDirection)
+
+        )
+
+
         }
+
+        Box(
+
+            modifier = Modifier
+                .padding(5.dp)
+                .size(width = 200.dp, height = 50.dp)
+                .align(Alignment.BottomStart)
+                .background(Color.DarkGray.copy(alpha = 0.5f) , shape = RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center
+        ){
+
+                Text(text = "🚸 $currentStreetName", color = Color.White, fontSize = 18.sp)
+
+        }
+
+        Box(
+
+            modifier = Modifier
+                .padding(5.dp)
+                .size(width = 150.dp, height = 50.dp)
+                .align(Alignment.BottomEnd)
+                .background(Color.DarkGray.copy(alpha = 0.5f) , shape = RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center
+        ){
+
+            Text(text = "\uD83D\uDC63 ${String.format("%.2f", distanceToPoi.value)} m", color = Color.White, fontSize = 18.sp, fontStyle = FontStyle.Italic)
+
+        }
+
+
+
 
         // Close Button
         Button(
@@ -515,36 +611,7 @@ fun NavigationOverlayWithStreetRoute(
     }
 }
 
-data class TurnInstruction(val instruction: String, val angle: Float)
 
-fun getNextTurnInstruction(currentLocation: LocationData, routePoints: List<GeoPoint>): TurnInstruction {
-    if (routePoints.size < 2) return TurnInstruction("Arrived", 0f)
-
-    val userGeoPoint = GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude)
-    val nextPoint = routePoints[1]
-
-    // Calculate the bearing between current position and next point
-    val bearingToNext = userGeoPoint.bearingTo(nextPoint).toFloat()
-
-    // Manually calculate the bearing by comparing the last two points
-    val heading = if (routePoints.size > 2) {
-        val previousPoint = routePoints[0]
-        previousPoint.bearingTo(userGeoPoint).toFloat()
-    } else {
-        0f // Default to no heading if not enough points
-    }
-
-    // Calculate the difference in bearing
-    val angleDifference = (bearingToNext - heading + 360) % 360
-
-    // Determine turn direction
-    return when {
-        angleDifference < 20 || angleDifference > 340 -> TurnInstruction("Continue Straight", angleDifference)
-        angleDifference in 20.0..160.0 -> TurnInstruction("Turn Right", angleDifference)
-        angleDifference in 200.0..340.0 -> TurnInstruction("Turn Left", angleDifference)
-        else -> TurnInstruction("Slight Turn", angleDifference)
-    }
-}
 
 
 /**
@@ -609,5 +676,25 @@ fun MonitorGeofence(
 
         )
     }
+}
+
+@Composable
+fun getStreetName(geoPoint: GeoPoint): String {
+    val context = LocalContext.current
+    val streetNameState = remember { mutableStateOf("Fetching...") }
+
+    LaunchedEffect(geoPoint) {
+        withContext(Dispatchers.IO) {  // Run in background thread
+            val geocoder = Geocoder(context, Locale.getDefault())
+            try {
+                val addresses = geocoder.getFromLocation(geoPoint.latitude, geoPoint.longitude, 1)
+                streetNameState.value = addresses?.firstOrNull()?.thoroughfare ?: "Unknown Street"
+            } catch (e: Exception) {
+                streetNameState.value = "Error Fetching Street"
+            }
+        }
+    }
+
+    return streetNameState.value
 }
 

@@ -67,5 +67,18 @@ fun getPoiList(context: Context): List<PointOfInterest> {
             "Arici stau aici."
         ),
 
+        PointOfInterest(
+            "Penny",
+            48.95825154527327, 9.079207403552235,
+            "Ein Discouter."
+        ),
+
+        PointOfInterest(
+            "Rewe",
+            48.956963887152334, 9.0749719824374,
+            "Place to be"
+        ),
+
+
         )
 }
