@@ -51,6 +51,12 @@ import androidx.compose.ui.unit.sp
 import de.hhn.gnsstrackingapp.ui.vrnavigation.GeofenceDialog
 import de.hhn.gnsstrackingapp.ui.vrnavigation.POIDialog
 import de.hhn.gnsstrackingapp.ui.vrnavigation.overlayPOIsOnMap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.URL
 
 
 @Composable
@@ -67,6 +73,7 @@ fun OsmMapView(
     val locationData by locationViewModel.locationData.collectAsState()
 
     val showNavigationOverlay = remember { mutableStateOf(false) }
+    val showNavigationOverlayNormal = remember { mutableStateOf(false) }
     val navigationTarget = remember { mutableStateOf<Location?>(null) }
 
 
@@ -141,6 +148,11 @@ fun OsmMapView(
                 navigationTarget.value = poiLocation // Set navigation target
                 showNavigationOverlay.value = true  // Trigger navigation overlay
             },
+            onNavigateNormal = {
+                    poiLocation ->
+                navigationTarget.value = poiLocation // Set navigation target
+                showNavigationOverlayNormal.value = true  // Trigger navigation overlay
+            },
             onDismiss = { selectedPOI.value = null }
         )
 
@@ -159,6 +171,26 @@ fun OsmMapView(
 
 
             } // Close overlay
+
+        )
+
+    }
+
+    // Show navigation overlay if triggered
+    if (showNavigationOverlayNormal.value) {
+        isFullscreen.value = true
+        NavigationOverlayWithStreetRoute(
+            locationViewModel = locationViewModel,
+            navigationViewModel = navigationViewModel,
+            poiLocation = navigationTarget.value ?: return, // Ensure non-null target
+            onClose = {
+                isFullscreen.value = false
+
+                showNavigationOverlayNormal.value = false
+
+
+            },
+
 
         )
 
@@ -263,7 +295,8 @@ private fun updateMapViewState(
  * - Automatic calculation of the distance to the POI using `calculateDistance`.
  * - Hides system bars for a full-screen experience.
  * - Monitors the geofence and alerts the user when they enter a defined radius around any POI.
- */@Composable
+ */
+@Composable
 fun NavigationOverlay(
     locationViewModel: LocationViewModel,
     navigationViewModel: NavigationViewModel,
@@ -371,6 +404,122 @@ fun NavigationOverlay(
         }
     }
 }
+
+
+fun fetchRouteFromOpenRouteService(
+    start: GeoPoint,
+    end: GeoPoint,
+    onRouteFetched: (List<GeoPoint>) -> Unit
+) {
+    val apiKey = "5b3ce3597851110001cf62487b426dbfa8214535808ed56ded754e91"
+    val url = "https://api.openrouteservice.org/v2/directions/foot-walking?api_key=$apiKey&start=${start.longitude},${start.latitude}&end=${end.longitude},${end.latitude}"
+
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val response = URL(url).readText()
+            val json = JSONObject(response)
+            val coordinates = json.getJSONArray("features")
+                .getJSONObject(0)
+                .getJSONObject("geometry")
+                .getJSONArray("coordinates")
+
+            val points = mutableListOf<GeoPoint>()
+            for (i in 0 until coordinates.length()) {
+                val coord = coordinates.getJSONArray(i)
+                points.add(GeoPoint(coord.getDouble(1), coord.getDouble(0)))
+            }
+
+            withContext(Dispatchers.Main) {
+                onRouteFetched(points)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+}
+
+
+@Composable
+fun NavigationOverlayWithStreetRoute(
+    locationViewModel: LocationViewModel,
+    navigationViewModel: NavigationViewModel,
+    poiLocation: Location,
+    onClose: () -> Unit
+) {
+    val mapView = rememberMapViewWithLifecycle()
+    val context = LocalContext.current
+    val currentLocation by locationViewModel.locationData.collectAsState()
+    val distanceToPoi = remember { mutableStateOf(0.0) }
+    val routePoints = remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
+
+    LaunchedEffect(currentLocation, poiLocation) {
+        distanceToPoi.value = calculateDistance(
+            currentLocation.location.latitude,
+            currentLocation.location.longitude,
+            poiLocation.latitude,
+            poiLocation.longitude
+        )
+
+        // Fetch route from OpenRouteService API (You can replace this with another routing service if needed)
+        fetchRouteFromOpenRouteService(
+            start = GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude),
+            end = GeoPoint(poiLocation.latitude, poiLocation.longitude)
+        ) { route ->
+            routePoints.value = route
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = {
+                mapView.apply {
+                    setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
+                    setMultiTouchControls(true)
+                    controller.setZoom(15.0)
+                    controller.setCenter(GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude))
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+            update = { map ->
+                val userGeoPoint = GeoPoint(currentLocation.location.latitude, currentLocation.location.longitude)
+                val poiGeoPoint = GeoPoint(poiLocation.latitude, poiLocation.longitude)
+
+                map.overlays.clear()
+
+                // Adding Markers
+                val userMarker = org.osmdroid.views.overlay.Marker(map).apply {
+                    position = userGeoPoint
+                    setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_CENTER)
+                }
+
+                val poiMarker = org.osmdroid.views.overlay.Marker(map).apply {
+                    position = poiGeoPoint
+                    setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_CENTER)
+                }
+
+                // Adding the route polyline with proper street routing
+                val roadOverlay = org.osmdroid.views.overlay.Polyline().apply {
+                    setPoints(routePoints.value)
+                    outlinePaint.color = android.graphics.Color.BLUE
+                    outlinePaint.strokeWidth = 8f
+                }
+
+                map.overlays.addAll(listOf(userMarker, poiMarker, roadOverlay))
+                map.invalidate()
+            }
+        )
+
+        Button(
+            onClick = onClose,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        ) {
+            Text("Close")
+        }
+    }
+}
+
 
 
 

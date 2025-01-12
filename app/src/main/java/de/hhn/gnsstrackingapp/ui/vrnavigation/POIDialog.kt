@@ -15,6 +15,7 @@ import de.hhn.gnsstrackingapp.data.PointOfInterest
 fun POIDialog(
     poi: PointOfInterest,
     onNavigate: (Location) -> Unit, // Callback to trigger navigation
+    onNavigateNormal: (Location) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -39,6 +40,19 @@ fun POIDialog(
                             longitude = poi.longitude
                         }
                         onNavigate(poiLocation) // Pass the location to the callback
+                        onDismiss() // Dismiss the dialog
+                    }
+                ) {
+                    Text("VR")
+                }
+                TextButton(
+                    onClick = {
+                        // Create a Location object for the selected POI
+                        val poiLocation = Location("osmdroid").apply {
+                            latitude = poi.latitude
+                            longitude = poi.longitude
+                        }
+                        onNavigateNormal(poiLocation) // Pass the location to the callback
                         onDismiss() // Dismiss the dialog
                     }
                 ) {
