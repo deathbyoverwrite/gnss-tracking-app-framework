@@ -18,6 +18,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
 import de.hhn.gnsstrackingapp.ui.theme.Purple40
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -37,6 +39,8 @@ import kotlin.math.sqrt
 fun MapScreen(
     mapViewModel: MapViewModel,
     locationViewModel: LocationViewModel,
+    navigationViewModel: NavigationViewModel,
+    isFullscreen: MutableState<Boolean>
 ) {
     val mapView = rememberMapViewWithLifecycle()
     val locationData by locationViewModel.locationData.collectAsState()
@@ -46,38 +50,51 @@ fun MapScreen(
             mapView = mapView,
             mapViewModel = mapViewModel,
             locationViewModel = locationViewModel,
+            navigationViewModel = navigationViewModel,
+            isFullscreen = isFullscreen
         )
 
-        LocationCard(locationData = locationData)
+        //overlayPOIsOnMap(mapView = mapView, poiList = poiList)
+
+        if (!isFullscreen.value) {
+            LocationCard(locationData = locationData)
+        }
 
         Row(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.Bottom,
             modifier = Modifier.fillMaxSize()
         ) {
-            GetOwnLocationButton(onClick = {
-                val targetLocation = locationViewModel.locationData.value.location
-                val distance = calculateDistance(
-                    mapViewModel.centerLocation.latitude,
-                    mapViewModel.centerLocation.longitude,
-                    targetLocation.latitude,
-                    targetLocation.longitude
-                )
-                val animationDuration = calculateAnimationDuration(
-                    distance, mapViewModel.zoomLevel
-                )
+            if (!isFullscreen.value) {
+                GetOwnLocationButton(onClick = {
+                    val targetLocation = locationViewModel.locationData.value.location
+                    val distance = calculateDistance(
+                        mapViewModel.centerLocation.latitude,
+                        mapViewModel.centerLocation.longitude,
+                        targetLocation.latitude,
+                        targetLocation.longitude
+                    )
 
-                mapViewModel.centerLocation = targetLocation
-                mapViewModel.zoomLevel = 20.0
+                    val animationDuration = calculateAnimationDuration(
+                        distance, mapViewModel.zoomLevel
+                    )
 
-                mapViewModel.isAnimating.value = true
-                mapView.controller.animateTo(
-                    mapViewModel.centerLocation, mapViewModel.zoomLevel, animationDuration, 0f
-                )
-                mapViewModel.isAnimating.value = false
-            })
+                    mapViewModel.centerLocation = targetLocation
+                    mapViewModel.zoomLevel = 20.0
+
+                    mapViewModel.isAnimating.value = true
+                    mapView.controller.animateTo(
+                        mapViewModel.centerLocation,
+                        mapViewModel.zoomLevel,
+                        animationDuration,
+                        0f
+                    )
+                    mapViewModel.isAnimating.value = false
+                })
+            }
         }
     }
+
 }
 
 @Composable

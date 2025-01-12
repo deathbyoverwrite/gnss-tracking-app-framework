@@ -35,7 +35,7 @@ fun StatisticsScreen(
             fontSize = Typography().headlineLarge.fontSize
         )
 
-        ConnectedWebSocketChip(webServicesProvider)
+        //ConnectedWebSocketChip(webServicesProvider)
 
         ElevatedCard {
             Column(

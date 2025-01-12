@@ -11,35 +11,40 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
-import de.hhn.gnsstrackingapp.network.WebServicesProvider
 import de.hhn.gnsstrackingapp.services.LocationService
 import de.hhn.gnsstrackingapp.services.ServiceManager
 import de.hhn.gnsstrackingapp.ui.navigation.MainNavigation
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationBarComponent
+import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.LocationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.MapViewModel
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsViewModel
 import de.hhn.gnsstrackingapp.ui.screens.statistics.StatisticsViewModel
-import de.hhn.gnsstrackingapp.ui.screens.statistics.parseGnssJson
 import de.hhn.gnsstrackingapp.ui.theme.GNSSTrackingAppTheme
-import kotlinx.coroutines.launch
+import de.hhn.gnsstrackingapp.ui.vrnavigation.AzimuthCalculator
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.osmdroid.util.GeoPoint
 
 
 class MainActivity : ComponentActivity() {
     private lateinit var serviceManager: ServiceManager
-    private lateinit var webServicesProvider: WebServicesProvider
+    //private lateinit var webServicesProvider: WebServicesProvider
 
     private val mapViewModel: MapViewModel by viewModel()
     private val locationViewModel: LocationViewModel by viewModel()
     private val settingsViewModel: SettingsViewModel by viewModel()
     private val statisticsViewModel: StatisticsViewModel by viewModel()
+    private val navigationViewModel: NavigationViewModel by viewModel()
+    private lateinit var azimuthCalculator: AzimuthCalculator
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        azimuthCalculator = AzimuthCalculator(this, navigationViewModel)
+
         super.onCreate(savedInstanceState)
 
         serviceManager = ServiceManager(this)
@@ -64,27 +69,29 @@ class MainActivity : ComponentActivity() {
             locationViewModel.updateLocation(GeoPoint(latitude, longitude), locationName, accuracy)
         }
 
-        val webServicesProvider = WebServicesProvider("ws://${webSocketIp.value}:80")
-        lifecycleScope.launch {
-            webServicesProvider.startSocket()
-        }
-        lifecycleScope.launch {
-            for (socketUpdate in webServicesProvider.socketEventChannel) {
-                socketUpdate.text?.let { jsonData ->
-                    statisticsViewModel.updateGnssOutput(parseGnssJson(jsonData))
-                }
-            }
-        }
+        //val webServicesProvider = WebServicesProvider("ws://${webSocketIp.value}:80")
+        //lifecycleScope.launch {
+        //   webServicesProvider.startSocket()
+        //}
+        //lifecycleScope.launch {
+        //   for (socketUpdate in webServicesProvider.socketEventChannel) {
+        //        socketUpdate.text?.let { jsonData ->
+        //          statisticsViewModel.updateGnssOutput(parseGnssJson(jsonData))
+        //    }
+        //   }
+        ///}
 
         setContent {
             GNSSTrackingAppTheme {
                 val navHostController = rememberNavController()
+                val isFullscreen = remember { mutableStateOf(false) } // Track fullscreen state
+
 
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
                     Scaffold(bottomBar = {
-                        NavigationBarComponent(navHostController)
+                        NavigationBarComponent(navHostController, isFullscreen)
                     }, content = { padding ->
                         Column(Modifier.padding(padding)) {
                             MainNavigation(
@@ -93,7 +100,9 @@ class MainActivity : ComponentActivity() {
                                 locationViewModel,
                                 statisticsViewModel,
                                 settingsViewModel,
-                                webServicesProvider
+                                //webServicesProvider,
+                                navigationViewModel,
+                                isFullscreen
                             )
                         }
                     })
@@ -106,6 +115,6 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
 
         serviceManager.stopLocationService()
-        webServicesProvider.stopSocket()
+        //webServicesProvider.stopSocket()
     }
 }
