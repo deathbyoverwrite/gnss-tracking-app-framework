@@ -3,6 +3,15 @@ package de.hhn.gnsstrackingapp.data
 import android.content.Context
 import de.hhn.gnsstrackingapp.R
 
+/**
+ * Data class representing a Point of Interest (POI).
+ * Each POI has a name, latitude, longitude, and an optional description.
+ *
+ * @param name The name of the point of interest.
+ * @param latitude The latitude coordinate of the POI.
+ * @param longitude The longitude coordinate of the POI.
+ * @param description An optional description providing additional information about the POI.
+ */
 data class PointOfInterest(
     val name: String,
     val latitude: Double,
@@ -11,6 +20,15 @@ data class PointOfInterest(
 )
 
 
+/**
+ * Returns a list of predefined Points of Interest (POIs).
+ *
+ * The POIs include various landmarks and locations around a specific area.
+ * Some descriptions include placeholder text pulled from the app's string resources.
+ *
+ * @param context The context used to retrieve localized strings.
+ * @return A list of PointOfInterest objects.
+ */
 fun getPoiList(context: Context): List<PointOfInterest> {
     return listOf(
 
@@ -77,6 +95,36 @@ fun getPoiList(context: Context): List<PointOfInterest> {
             "Rewe",
             48.956963887152334, 9.0749719824374,
             "Place to be"
+        ),
+
+        PointOfInterest(
+            "Institut für Nachhaltigekit",
+            49.123091674424614, 9.21039533652681,
+            "Das ist Nachhaltig"
+        ),
+
+        PointOfInterest(
+            "Ladestation",
+            49.121642267857034, 9.21236199776037,
+            "Hier Lädt es sich gut"
+        ),
+
+        PointOfInterest(
+            "Efendi",
+            49.12042644964467, 9.20752433362531,
+            "War mal ganz gut"
+        ),
+
+        PointOfInterest(
+            "Rando1",
+            48.96083958728855, 9.076135605035903,
+            "Wwwwww"
+        ),
+
+        PointOfInterest(
+            "Lustig",
+            48.95721002952351, 9.081508470573043,
+            "HIHIHIHI"
         ),
 
 

@@ -126,7 +126,7 @@ class AzimuthCalculator(
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // Handle sensor accuracy changes if needed
+        // Handle sensor accuracy changes if needed maybe....idk
     }
 
 
