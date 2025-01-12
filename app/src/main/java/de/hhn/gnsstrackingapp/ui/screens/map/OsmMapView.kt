@@ -1,34 +1,17 @@
 package de.hhn.gnsstrackingapp.ui.screens.map
-import android.view.Surface
-import android.view.WindowManager
-import android.content.Context
-import android.content.Intent
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
+
 import android.location.Location
-import android.net.Uri
 import android.util.Log
 import android.view.View
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -60,15 +43,14 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.ScaleBarOverlay
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
 import kotlin.collections.forEach
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import androidx.compose.ui.unit.sp
-
-
-
+import de.hhn.gnsstrackingapp.ui.vrnavigation.GeofenceDialog
+import de.hhn.gnsstrackingapp.ui.vrnavigation.POIDialog
+import de.hhn.gnsstrackingapp.ui.vrnavigation.overlayPOIsOnMap
 
 
 @Composable
@@ -118,36 +100,36 @@ fun OsmMapView(
 
     var selectedPOI = remember { mutableStateOf<PointOfInterest?>(null) }
 
-        AndroidView(factory = { mapView },
-            modifier = if (isFullscreen.value) Modifier.size(0.dp) else Modifier.fillMaxSize(),
-            update = { mapViewUpdate ->
-                mapViewUpdate.apply {
-                    if (!hasMapListener(mapListener)) {
-                        addMapListener(mapListener)
-                    }
-
-                    visibility = if (isFullscreen.value) View.GONE else View.VISIBLE
-                    updateMapViewState(mapView, mapViewModel, locationData, onCircleClick)
-
-                    // TODO: POI Functionality Begin
-                    // Overlay POIs on the map
-                    overlayPOIsOnMap(
-                        mapView = this,
-                        poiList = getPoiList(context = this.context),
-                        onMarkerClick = { poi ->
-                            // Set the clicked POI to show in the dialog
-                            selectedPOI.value = poi
-
-                            println("POI Clicked: ${poi.name}")
-                        }
-                    )
-
-                    // TODO: POI Functionality END
-
-                    // Refresh the map view
-                    invalidate()
+    AndroidView(factory = { mapView },
+        modifier = if (isFullscreen.value) Modifier.size(0.dp) else Modifier.fillMaxSize(),
+        update = { mapViewUpdate ->
+            mapViewUpdate.apply {
+                if (!hasMapListener(mapListener)) {
+                    addMapListener(mapListener)
                 }
-            })
+
+                visibility = if (isFullscreen.value) View.GONE else View.VISIBLE
+                updateMapViewState(mapView, mapViewModel, locationData, onCircleClick)
+
+                // TODO: POI Functionality Begin
+                // Overlay POIs on the map
+                overlayPOIsOnMap(
+                    mapView = this,
+                    poiList = getPoiList(context = this.context),
+                    onMarkerClick = { poi ->
+                        // Set the clicked POI to show in the dialog
+                        selectedPOI.value = poi
+
+                        println("POI Clicked: ${poi.name}")
+                    }
+                )
+
+                // TODO: POI Functionality END
+
+                // Refresh the map view
+                invalidate()
+            }
+        })
 
     // Show the POI dialog when a marker is clicked
 
@@ -174,7 +156,6 @@ fun OsmMapView(
                 isFullscreen.value = false
 
                 showNavigationOverlay.value = false
-
 
 
             } // Close overlay
@@ -268,74 +249,21 @@ private fun updateMapViewState(
     }
 }
 
-// TODO: Function to overlay POIs on the map
-fun overlayPOIsOnMap(mapView: MapView, poiList: List<PointOfInterest>, onMarkerClick: (PointOfInterest) -> Unit
-) {
-
-    if (mapView.repository == null) {
-        Log.e("MapView", "MapView repository is not initialized")
-        return
-    }
-    poiList.forEach { poi ->
-        val marker = Marker(mapView).apply {
-            position = GeoPoint(poi.latitude, poi.longitude)
-            title = poi.name
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-
-            // Add a click listener to trigger the callback
-            setOnMarkerClickListener { _, _ ->
-                onMarkerClick(poi)
-                true
-            }
-        }
-        mapView.overlays.add(marker)
-    }
-}
-// TODO: Fucking remove this pete ok cool, hoarderrr
-@Composable
-fun POIDialogGOOGLE(poi: PointOfInterest, onDismiss: () -> Unit) {
-    val context = LocalContext.current // Retrieve context within the Composable
-
-    AlertDialog(
-        onDismissRequest = { onDismiss() },
-        title = { Text(text = poi.name) },
-        text = { Text(text = poi.description ?: "No description available") },
-        confirmButton = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween // Align buttons to opposite sides
-            ) {
-                TextButton(
-                    onClick = onDismiss,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color.Transparent // Set the text color to transparent
-                    )
-                ) {
-                    Text("X")
-                }
-                TextButton(
-                    onClick = {
-                        // Launch navigation intent
-                        val uri = "google.navigation:q=${poi.latitude},${poi.longitude}"
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri)).apply {
-                            setPackage("com.google.android.apps.maps") // Prefer Google Maps if available
-                        }
-                        context.startActivity(intent)
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color.White,
-                        containerColor = Color.Red // Red background
-                    )
-                ) {
-                    Text("Navigate")
-                }
-            }
-        }
-    )
-}
-
-//TODO: maybe delete here
-@Composable
+/**
+ * Composable function to display a navigation overlay for guiding the user towards a point of interest (POI).
+ *
+ * @param locationViewModel The ViewModel responsible for managing the user's current location data.
+ * @param navigationViewModel The ViewModel responsible for managing navigation-related data such as direction.
+ * @param poiLocation The location of the target point of interest.
+ *
+ * The overlay displays:
+ * - The current distance to the POI.
+ * - A directional arrow indicating the user's orientation relative to the POI.
+ * - A close button for dismissing the overlay.
+ * - Automatic calculation of the distance to the POI using `calculateDistance`.
+ * - Hides system bars for a full-screen experience.
+ * - Monitors the geofence and alerts the user when they enter a defined radius around any POI.
+ */@Composable
 fun NavigationOverlay(
     locationViewModel: LocationViewModel,
     navigationViewModel: NavigationViewModel,
@@ -367,10 +295,8 @@ fun NavigationOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Transparent) // Replace with your screen background
+            .background(Color.Transparent)
     ) {
-
-
 
 
     }
@@ -381,7 +307,10 @@ fun NavigationOverlay(
             val userGeoPoint = GeoPoint(userLocation.latitude, userLocation.longitude)
 
             // Update the direction to the POI in the NavigationViewModel
-            navigationViewModel.updateDirectionToPoi(userGeoPoint, GeoPoint(poiLocation.latitude, poiLocation.longitude))
+            navigationViewModel.updateDirectionToPoi(
+                userGeoPoint,
+                GeoPoint(poiLocation.latitude, poiLocation.longitude)
+            )
         }
     }
 
@@ -398,7 +327,10 @@ fun NavigationOverlay(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(16.dp)
-                .background(Color.DarkGray.copy(alpha = 0.7f), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                .background(
+                    Color.DarkGray.copy(alpha = 0.7f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                )
                 .padding(8.dp)
         ) {
             Text(
@@ -421,13 +353,15 @@ fun NavigationOverlay(
         MonitorGeofence(
             locationViewModel = locationViewModel,
             poiList = getPoiList(context = LocalContext.current),
-            geofenceRadius = 50f // Adjust the radius as needed
+            geofenceRadius = 50f // Adjust the radius as needed of geofence
         )
 
         // Close Button
         Button(
             onClick = onClose,
-            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp),
             colors = ButtonDefaults.textButtonColors(
                 contentColor = Color.Cyan
             )
@@ -440,213 +374,20 @@ fun NavigationOverlay(
 
 
 
-@Composable
-fun POIDialog(
-    poi: PointOfInterest,
-    onNavigate: (Location) -> Unit, // Callback to trigger navigation
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = { onDismiss() },
-        title = { Text(text = poi.name) },
-        text = { Text(text = poi.description ?: "No description available") },
-        confirmButton = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween // Align buttons to opposite sides
-            ) {
-                TextButton(
-                    onClick = onDismiss
-                ) {
-                    Text("Close")
-                }
-                TextButton(
-                    onClick = {
-                        // Create a Location object for the selected POI
-                        val poiLocation = Location("osmdroid").apply {
-                            latitude = poi.latitude
-                            longitude = poi.longitude
-                        }
-                        onNavigate(poiLocation) // Pass the location to the callback
-                        onDismiss() // Dismiss the dialog
-                    }
-                ){
-                    Text("Navigate")
-                }
-            }
-        }
-    )
-}
-
-
-class AzimuthCalculator(
-    context: Context,
-    private val navigationViewModel: NavigationViewModel
-) : SensorEventListener {
-    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
-    private val gravity = FloatArray(3)
-    private val geomagnetic = FloatArray(3)
-    private val rotationMatrix = FloatArray(9)
-    private val adjustedRotationMatrix = FloatArray(9)
-    private val orientation = FloatArray(3)
-
-    private val accelerometerSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    private val magneticFieldSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
-
-    private var azimuth: Float = 0f
-    private var lastAzimuth: Float = 0f
-
-    init {
-        accelerometerSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
-        }
-        magneticFieldSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
-        }
-    }
-
-    override fun onSensorChanged(event: SensorEvent?) {
-        if (event == null) return
-
-        when (event.sensor.type) {
-            Sensor.TYPE_ACCELEROMETER -> {
-                System.arraycopy(event.values, 0, gravity, 0, event.values.size)
-            }
-            Sensor.TYPE_MAGNETIC_FIELD -> {
-                System.arraycopy(event.values, 0, geomagnetic, 0, event.values.size)
-            }
-        }
-
-        if (SensorManager.getRotationMatrix(rotationMatrix, null, gravity, geomagnetic)) {
-            // Adjust the rotation matrix based on the device's orientation
-            remapForScreenRotation()
-
-            SensorManager.getOrientation(adjustedRotationMatrix, orientation)
-
-            // Get azimuth in radians and convert to degrees
-            azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
-
-            // Normalize azimuth to 0°-360°
-            azimuth = (azimuth + 360) % 360
-
-            // Smooth azimuth using a low-pass filter
-            azimuth = lowPassFilter(azimuth, lastAzimuth)
-            lastAzimuth = azimuth
-
-            // Update the navigation view model with the smoothed azimuth
-            navigationViewModel.updateDeviceAzimuth(azimuth)
-        }
-    }
-
-    private fun remapForScreenRotation() {
-        val rotation = windowManager.defaultDisplay.rotation
-        when (rotation) {
-            Surface.ROTATION_0 -> {
-                // Portrait mode
-                System.arraycopy(rotationMatrix, 0, adjustedRotationMatrix, 0, rotationMatrix.size)
-            }
-            Surface.ROTATION_90 -> {
-                // Landscape mode, 90 degrees
-                SensorManager.remapCoordinateSystem(
-                    rotationMatrix,
-                    SensorManager.AXIS_Y,
-                    SensorManager.AXIS_MINUS_X,
-                    adjustedRotationMatrix
-                )
-            }
-            Surface.ROTATION_180 -> {
-                // Reverse portrait
-                SensorManager.remapCoordinateSystem(
-                    rotationMatrix,
-                    SensorManager.AXIS_MINUS_X,
-                    SensorManager.AXIS_MINUS_Y,
-                    adjustedRotationMatrix
-                )
-            }
-            Surface.ROTATION_270 -> {
-                // Landscape mode, 270 degrees
-                SensorManager.remapCoordinateSystem(
-                    rotationMatrix,
-                    SensorManager.AXIS_MINUS_Y,
-                    SensorManager.AXIS_X,
-                    adjustedRotationMatrix
-                )
-            }
-        }
-    }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // Handle sensor accuracy changes if needed
-    }
-
-    fun unregister() {
-        sensorManager.unregisterListener(this)
-    }
-
-    /**
-     * Low-pass filter to smooth the azimuth values.
-     * @param input Current azimuth value.
-     * @param output Previous smoothed azimuth value.
-     * @return Smoothed azimuth value.
-     */
-    private fun lowPassFilter(input: Float, output: Float): Float {
-        val alpha = 0.25f // Smoothing factor (0 < alpha < 1)
-        return output + alpha * (input - output)
-    }
-}
-
-
-
-@Composable
-fun GeofenceDialog(
-    poi: PointOfInterest,
-    isVisible: MutableState<Boolean>,
-    onDismiss: () -> Unit,
-    onAction: () -> Unit
-) {
-    if (isVisible.value) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart) // Position at the upper-left corner
-                    .padding(16.dp) // Add padding to avoid screen edges
-                    .size(width = 100.dp, height = 120.dp) // Define a fixed size for the dialog
-                    .background(Color.Cyan.copy(alpha = 0.2f), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)) // Rounded corners
-                    .padding(12.dp) // Inner padding for content
-            ) {
-            Column {
-                Icon(
-                    imageVector = Icons.Filled.Home, // Use a built-in house icon
-                    contentDescription = "House Icon",
-                    tint = Color.White, // Set icon color
-                    modifier = Modifier.size(16.dp).align(Alignment.CenterHorizontally), // Adjust icon size
-
-                )
-                Text(
-                    text = "You've reached\n${poi.name}!",
-                    color = Color.White,
-                    fontSize = 9.sp,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-
-                )
-                Text(
-                    text = poi.description ?: "You are now at this location.",
-                    color = Color.White,
-                    fontSize = 9.sp,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-
-                )
-
-                }}}}
-}
-
-
-
+/**
+ * Composable function that monitors the user's location and checks whether they enter the geofence
+ * of any provided points of interest (POI). If the user enters a geofence, a dialog is shown.
+ *
+ * @param locationViewModel The `LocationViewModel` providing the user's current location as a `StateFlow`.
+ * @param poiList A list of `PointOfInterest` objects representing the points of interest to monitor.
+ * @param geofenceRadius The radius in meters within which the user is considered inside a geofence. Default is 10 meters.
+ *
+ * The function works as follows:
+ * - Continuously monitors the user's location using `collectAsState`.
+ * - When the user's location updates, the distance between the user and each POI is calculated.
+ * - If the user enters a geofence (distance <= geofenceRadius):
+ *   - A dialog (`GeofenceDialog`) is shown with information about the POI.
+ **/
 @Composable
 fun MonitorGeofence(
     locationViewModel: LocationViewModel,
@@ -691,7 +432,8 @@ fun MonitorGeofence(
             onAction = {
                 // Perform any action, like navigating to a different screen
                 Log.d("Geofence", "Action triggered for ${poi.name}")
-            }
+            },
+
         )
     }
 }

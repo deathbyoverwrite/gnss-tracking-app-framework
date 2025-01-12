@@ -14,22 +14,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
-import de.hhn.gnsstrackingapp.network.WebServicesProvider
 import de.hhn.gnsstrackingapp.services.LocationService
 import de.hhn.gnsstrackingapp.services.ServiceManager
 import de.hhn.gnsstrackingapp.ui.navigation.MainNavigation
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationBarComponent
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
-import de.hhn.gnsstrackingapp.ui.screens.map.AzimuthCalculator
+import de.hhn.gnsstrackingapp.ui.vrnavigation.AzimuthCalculator
 import de.hhn.gnsstrackingapp.ui.screens.map.LocationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.MapViewModel
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsViewModel
 import de.hhn.gnsstrackingapp.ui.screens.statistics.StatisticsViewModel
-import de.hhn.gnsstrackingapp.ui.screens.statistics.parseGnssJson
 import de.hhn.gnsstrackingapp.ui.theme.GNSSTrackingAppTheme
-import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.osmdroid.util.GeoPoint
 
