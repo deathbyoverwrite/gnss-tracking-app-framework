@@ -7,7 +7,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.view.Surface
 import android.view.WindowManager
-import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
+import de.hhn.gnsstrackingapp.ui.screens.map.NavigationViewModel
 
 
 /**
@@ -126,7 +126,6 @@ class AzimuthCalculator(
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // Handle sensor accuracy changes if needed maybe....idk
     }
 
 

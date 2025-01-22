@@ -19,7 +19,7 @@ import de.hhn.gnsstrackingapp.services.LocationService
 import de.hhn.gnsstrackingapp.services.ServiceManager
 import de.hhn.gnsstrackingapp.ui.navigation.MainNavigation
 import de.hhn.gnsstrackingapp.ui.navigation.NavigationBarComponent
-import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
+import de.hhn.gnsstrackingapp.ui.screens.map.NavigationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.LocationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.MapViewModel
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsViewModel
@@ -113,6 +113,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        azimuthCalculator.unregister()
 
         serviceManager.stopLocationService()
         //webServicesProvider.stopSocket()

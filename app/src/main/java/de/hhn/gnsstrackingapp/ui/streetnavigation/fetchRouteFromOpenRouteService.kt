@@ -8,6 +8,10 @@ import org.json.JSONObject
 import org.osmdroid.util.GeoPoint
 import java.net.URL
 
+/**
+ * Fetching route data using the OpenRouteService API and converting it into a list of GeoPoint objects.
+ */
+
 fun fetchRouteFromOpenRouteService(
     start: GeoPoint,
     end: GeoPoint,

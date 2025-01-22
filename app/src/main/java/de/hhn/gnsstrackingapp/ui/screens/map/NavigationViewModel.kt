@@ -1,4 +1,4 @@
-package de.hhn.gnsstrackingapp.ui.navigation
+package de.hhn.gnsstrackingapp.ui.screens.map
 
 import android.location.Location
 import androidx.lifecycle.LiveData
@@ -6,6 +6,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import org.osmdroid.util.GeoPoint
 
+
+/**
+ * ViewModel for navigation-related data and calculations.
+ */
 class NavigationViewModel : ViewModel() {
 
     // LiveData to hold direction (angle) to POI and device azimuth (orientation)
@@ -69,4 +73,6 @@ class NavigationViewModel : ViewModel() {
         val finalDirection = ((direction - azimuth) + 360) % 360
         _finalDirection.postValue(finalDirection)
     }
+
+
 }

@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import de.hhn.gnsstrackingapp.ui.screens.map.LocationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.map.MapScreen
 import de.hhn.gnsstrackingapp.ui.screens.map.MapViewModel
+import de.hhn.gnsstrackingapp.ui.screens.map.NavigationViewModel
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsScreen
 import de.hhn.gnsstrackingapp.ui.screens.settings.SettingsViewModel
 import de.hhn.gnsstrackingapp.ui.screens.statistics.StatisticsViewModel

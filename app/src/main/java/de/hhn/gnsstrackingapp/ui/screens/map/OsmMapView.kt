@@ -1,5 +1,6 @@
 package de.hhn.gnsstrackingapp.ui.screens.map
 
+import android.annotation.SuppressLint
 import android.location.Geocoder
 import android.location.Location
 import android.util.Log
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -23,6 +25,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -44,7 +47,6 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import de.hhn.gnsstrackingapp.R
 import de.hhn.gnsstrackingapp.data.PointOfInterest
 import de.hhn.gnsstrackingapp.data.getPoiList
-import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
 import de.hhn.gnsstrackingapp.ui.streetnavigation.fetchRouteFromOpenRouteService
 import de.hhn.gnsstrackingapp.ui.vrnavigation.GeofenceDialog
 import de.hhn.gnsstrackingapp.ui.vrnavigation.POIDialog
@@ -123,27 +125,21 @@ fun OsmMapView(
                 visibility = if (isFullscreen.value) View.GONE else View.VISIBLE
                 updateMapViewState(mapView, mapViewModel, locationData, onCircleClick)
 
-                // TODO: POI Functionality Begin
+
                 // Overlay POIs on the map
                 overlayPOIsOnMap(
                     mapView = this,
                     poiList = getPoiList(context = this.context),
                     onMarkerClick = { poi ->
-                        // Set the clicked POI to show in the dialog
                         selectedPOI.value = poi
-
                         println("POI Clicked: ${poi.name}")
                     }
                 )
-
-                // TODO: POI Functionality END
-
                 // Refresh the map view
                 invalidate()
             }
         })
 
-    // Show the POI dialog when a marker is clicked
 
     // Show POI Dialog when a marker is clicked
     selectedPOI.value?.let { poi ->
@@ -167,7 +163,7 @@ fun OsmMapView(
         NavigationOverlay(
             locationViewModel = locationViewModel,
             navigationViewModel = navigationViewModel,
-            poiLocation = navigationTarget.value ?: return, // Ensure non-null target
+            poiLocation = navigationTarget.value ?: return,
             onClose = {
                 isFullscreen.value = false
 
@@ -186,7 +182,7 @@ fun OsmMapView(
         NavigationOverlayWithStreetRoute(
             locationViewModel = locationViewModel,
             navigationViewModel = navigationViewModel,
-            poiLocation = navigationTarget.value ?: return, // Ensure non-null target
+            poiLocation = navigationTarget.value ?: return,
             onClose = {
                 isFullscreen.value = false
 
@@ -286,7 +282,7 @@ private fun updateMapViewState(
 }
 
 /**
- *   OVERLAY FOR ROCKID VR GLASSES
+ * OVERLAY FOR ROCKID VR GLASSES
  *
  * Composable function to display a navigation overlay for guiding the user towards a point of interest (POI).
  *
@@ -302,6 +298,7 @@ private fun updateMapViewState(
  * - Hides system bars for a full-screen experience.
  * - Monitors the geofence and alerts the user when they enter a defined radius around any POI.
  */
+@SuppressLint("DefaultLocale")
 @Composable
 fun NavigationOverlay(
     locationViewModel: LocationViewModel,
@@ -315,9 +312,9 @@ fun NavigationOverlay(
 
     val systemUiController = rememberSystemUiController()
 
-    val distanceToPoi = remember { mutableStateOf(0.0) }
+    val distanceToPoi = remember { mutableDoubleStateOf(0.0) }
     LaunchedEffect(currentLocation, poiLocation) {
-        distanceToPoi.value = calculateDistance(
+        distanceToPoi.doubleValue = calculateDistance(
             currentLocation.location.latitude,
             currentLocation.location.longitude,
             poiLocation.latitude,
@@ -340,12 +337,10 @@ fun NavigationOverlay(
 
     }
 
-    // Recalculate direction whenever the current location or POI changes
     LaunchedEffect(currentLocation, poiLocation) {
         currentLocation.location.let { userLocation ->
             val userGeoPoint = GeoPoint(userLocation.latitude, userLocation.longitude)
 
-            // Update the direction to the POI in the NavigationViewModel
             navigationViewModel.updateDirectionToPoi(
                 userGeoPoint,
                 GeoPoint(poiLocation.latitude, poiLocation.longitude)
@@ -356,7 +351,7 @@ fun NavigationOverlay(
 
     val animatedDirection by animateFloatAsState(
         targetValue = finalDirection,
-        animationSpec = tween(durationMillis = 150)
+        animationSpec = tween(durationMillis = 150), label = ""
     )
 
     Box(
@@ -376,14 +371,14 @@ fun NavigationOverlay(
                 .padding(8.dp)
         ) {
             Text(
-                text = "Distance: ${String.format("%.2f", distanceToPoi.value)} m",
+                text = "Distance: ${String.format("%.2f", distanceToPoi.doubleValue)} m",
                 color = Color.White,
                 fontSize = 14.sp
             )
         }
 
         // Directional Arrow
-        androidx.compose.foundation.Image(
+        Image(
             painter = painterResource(id = R.drawable.baseline_double_arrow_24),
             contentDescription = "Direction Arrow",
             modifier = Modifier
@@ -395,7 +390,7 @@ fun NavigationOverlay(
         MonitorGeofence(
             locationViewModel = locationViewModel,
             poiList = getPoiList(context = LocalContext.current),
-            geofenceRadius = 50f // Adjust the radius as needed of geofence
+            geofenceRadius = 50f
         )
 
         // Close Button
@@ -430,6 +425,7 @@ fun NavigationOverlay(
  * - Hides system bars for a full-screen experience.
  * - Displays the Current Street the User is on
  */
+@SuppressLint("DefaultLocale")
 @Composable
 fun NavigationOverlayWithStreetRoute(
     locationViewModel: LocationViewModel,
@@ -442,11 +438,12 @@ fun NavigationOverlayWithStreetRoute(
     val currentLocation by locationViewModel.locationData.collectAsState()
     val routePoints = remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
     val isRouteFetched = remember { mutableStateOf(false) }
+    val isLoading = remember { mutableStateOf(false) }
 
     val finalDirection by navigationViewModel.finalDirection.observeAsState(initial = 0f)
     val animatedDirection by animateFloatAsState(
         targetValue = finalDirection,
-        animationSpec = tween(durationMillis = 150)
+        animationSpec = tween(durationMillis = 150), label = ""
     )
 
 
@@ -464,6 +461,7 @@ fun NavigationOverlayWithStreetRoute(
     // Fetch route once when POI is selected
     LaunchedEffect(poiLocation) {
         if (!isRouteFetched.value) {
+            isLoading.value = true
             fetchRouteFromOpenRouteService(
                 start = GeoPoint(
                     currentLocation.location.latitude,
@@ -472,15 +470,16 @@ fun NavigationOverlayWithStreetRoute(
                 end = GeoPoint(poiLocation.latitude, poiLocation.longitude)
             ) { route ->
                 routePoints.value = route
+                isLoading.value = false
                 isRouteFetched.value = true
             }
         }
     }
 
 
-    val distanceToPoi = remember { mutableStateOf(0.0) }
+    val distanceToPoi = remember { mutableDoubleStateOf(0.0) }
     LaunchedEffect(currentLocation, poiLocation) {
-        distanceToPoi.value = calculateDistance(
+        distanceToPoi.doubleValue = calculateDistance(
             currentLocation.location.latitude,
             currentLocation.location.longitude,
             poiLocation.latitude,
@@ -517,7 +516,7 @@ fun NavigationOverlayWithStreetRoute(
         AndroidView(
             factory = {
                 mapView.apply {
-                    setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
+                    setTileSource(TileSourceFactory.MAPNIK)
                     setMultiTouchControls(true)
                     controller.setZoom(18.0)
                 }
@@ -538,8 +537,11 @@ fun NavigationOverlayWithStreetRoute(
                         org.osmdroid.views.overlay.Marker.ANCHOR_CENTER,
                         org.osmdroid.views.overlay.Marker.ANCHOR_CENTER
                     )
+                    val personIconResId = Class.forName("org.osmdroid.library.R\$drawable")
+                        .getField("person")
+                        .getInt(null)
                     icon =
-                        ContextCompat.getDrawable(context, org.osmdroid.library.R.drawable.person)
+                        ContextCompat.getDrawable(context, personIconResId)
                 }
 
                 // POI Marker
@@ -620,7 +622,7 @@ fun NavigationOverlayWithStreetRoute(
         ) {
 
             Text(
-                text = "\uD83D\uDC63 ${String.format("%.2f", distanceToPoi.value)} m",
+                text = "\uD83D\uDC63 ${String.format("%.2f", distanceToPoi.doubleValue)} m",
                 color = Color.White,
                 fontSize = 18.sp,
                 fontStyle = FontStyle.Italic
@@ -637,6 +639,20 @@ fun NavigationOverlayWithStreetRoute(
                 .padding(16.dp)
         ) {
             Text("Close")
+        }
+
+        if (isLoading.value) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    strokeWidth = 3.dp
+                )
+            }
         }
     }
 }
@@ -698,7 +714,6 @@ fun MonitorGeofence(
             isVisible = showDialog,
             onDismiss = { showDialog.value = false },
             onAction = {
-                // Perform any action, like navigating to a different screen
                 Log.d("Geofence", "Action triggered for ${poi.name}")
             },
 
@@ -706,6 +721,12 @@ fun MonitorGeofence(
     }
 }
 
+/**
+ * Composable function to fetch and display the street name for a given GeoPoint.
+ *
+ * @param geoPoint The geographic location (latitude and longitude) for which to fetch the street name.
+ * @return The street name as a String.
+ */
 @Composable
 fun getStreetName(geoPoint: GeoPoint): String {
     val context = LocalContext.current

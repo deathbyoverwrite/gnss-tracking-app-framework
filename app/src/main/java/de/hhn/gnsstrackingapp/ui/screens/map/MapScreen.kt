@@ -28,7 +28,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import de.hhn.gnsstrackingapp.ui.navigation.NavigationViewModel
 import de.hhn.gnsstrackingapp.ui.theme.Purple40
 import kotlin.math.atan2
 import kotlin.math.cos
